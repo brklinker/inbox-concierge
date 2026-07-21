@@ -111,7 +111,11 @@ export function SectionsNav({
                 />
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-[60] mt-0.5 flex min-w-[168px] flex-col rounded-[3px] border border-neutral-400 bg-background p-1 shadow-lg"
+                  className="absolute right-0 top-full z-[60] mt-0.5 flex min-w-[168px] flex-col rounded-[3px] border border-neutral-400 p-1"
+                  style={{
+                    background: "var(--paper, #f3f2f2)",
+                    boxShadow: "0 12px 32px rgba(45, 43, 43, 0.22)",
+                  }}
                 >
                   <button
                     role="menuitem"

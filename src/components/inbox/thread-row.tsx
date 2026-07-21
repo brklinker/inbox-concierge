@@ -115,7 +115,11 @@ export function ThreadRow({
             />
             <div
               role="menu"
-              className="absolute right-0 top-full z-[60] mt-1 min-w-[184px] rounded-[3px] border border-neutral-400 bg-background p-1 shadow-lg"
+              className="absolute right-0 top-full z-[60] mt-1 min-w-[184px] rounded-[3px] border border-neutral-400 p-1"
+              style={{
+                background: "var(--paper, #f3f2f2)",
+                boxShadow: "0 12px 32px rgba(45, 43, 43, 0.22)",
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="kicker px-2.5 pb-1 pt-1.5 text-muted-foreground">
