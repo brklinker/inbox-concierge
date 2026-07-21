@@ -1,4 +1,5 @@
 import pLimit from "p-limit";
+import { decodeHtmlEntities } from "./html-entities";
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -99,7 +100,59 @@ export async function getThreadMetadata(
     subject: header(first, "Subject"),
     sender,
     senderDomain: extractDomain(sender),
-    snippet: last?.snippet ?? null,
+    snippet: last?.snippet ? decodeHtmlEntities(last.snippet) : null,
     internalDate: last?.internalDate ? new Date(Number(last.internalDate)) : null,
   };
+}
+
+interface GmailBodyPart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailBodyPart[];
+}
+
+function findBody(part: GmailBodyPart | undefined, mimeType: string): string | null {
+  if (!part) return null;
+  if (part.mimeType === mimeType && part.body?.data) return part.body.data;
+  for (const child of part.parts ?? []) {
+    const found = findBody(child, mimeType);
+    if (found) return found;
+  }
+  return null;
+}
+
+export interface ThreadMessageBody {
+  from: string | null;
+  date: string | null;
+  html: string | null;
+  text: string | null;
+}
+
+interface GmailFullMessage extends GmailMessage {
+  payload?: GmailBodyPart & { headers?: { name: string; value: string }[] };
+}
+
+/**
+ * Full message bodies for the read view. Fetched on demand, returned to the
+ * client, and never written to the database — classification only ever sees
+ * metadata.
+ */
+export async function getThreadMessages(
+  accessToken: string,
+  id: string,
+): Promise<ThreadMessageBody[]> {
+  const thread = await gmailFetch<{ messages?: GmailFullMessage[] }>(
+    accessToken,
+    `/threads/${id}?format=full`,
+  );
+  return (thread.messages ?? []).map((m) => {
+    const html = findBody(m.payload, "text/html");
+    const text = findBody(m.payload, "text/plain");
+    return {
+      from: header(m, "From"),
+      date: m.internalDate ? new Date(Number(m.internalDate)).toISOString() : null,
+      html: html ? Buffer.from(html, "base64url").toString("utf8") : null,
+      text: text ? Buffer.from(text, "base64url").toString("utf8") : null,
+    };
+  });
 }

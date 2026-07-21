@@ -16,14 +16,24 @@ export function ThreadRow({
   bucketName,
   showBucket,
   isClassifying,
+  onOpen,
 }: {
   thread: ApiThread;
   bucketName: string | null;
   showBucket: boolean;
   isClassifying: boolean;
+  onOpen: (thread: ApiThread) => void;
 }) {
   const row = (
-    <div className="flex items-baseline gap-3 border-b px-3 py-2 text-sm">
+    <div
+      className="flex cursor-pointer items-baseline gap-3 border-b px-3 py-2 text-sm hover:bg-muted/50"
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(thread)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen(thread);
+      }}
+    >
       <span className="w-40 shrink-0 truncate font-medium">
         {senderName(thread.sender)}
       </span>

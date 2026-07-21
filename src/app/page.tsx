@@ -30,8 +30,9 @@ export default async function Home() {
           <Button type="submit">Sign in with Google</Button>
         </form>
         <p className="max-w-md text-xs text-muted-foreground">
-          Read-only Gmail access. Only subjects, senders, and preview snippets
-          are processed — never full message bodies.
+          Read-only Gmail access. Classification sees only subjects, senders,
+          and preview snippets — full bodies are fetched just-in-time when you
+          open a thread, and never stored.
         </p>
       </main>
     );

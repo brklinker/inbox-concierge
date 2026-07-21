@@ -5,6 +5,7 @@ import { ALL_TAB, BucketTabs, UNSORTED_TAB } from "./bucket-tabs";
 import { ClassificationProgress, type ClassifyProgress } from "./classification-progress";
 import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicator";
 import { InboxList } from "./inbox-list";
+import { ThreadViewDialog } from "./thread-view-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +41,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [confirmReclassify, setConfirmReclassify] = useState(false);
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
   const [editBucket, setEditBucket] = useState<ApiBucket | null>(null);
+  const [viewThread, setViewThread] = useState<ApiThread | null>(null);
   const classifyRunning = useRef(false);
   const hasLoaded = useRef(false);
 
@@ -341,6 +343,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           bucketNameById={bucketNameById}
           showBucket={active === ALL_TAB || active === UNSORTED_TAB}
           isClassifying={isClassifying}
+          onOpen={setViewThread}
           emptyMessage={
             active === ALL_TAB
               ? "No threads in your inbox."
@@ -350,6 +353,18 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           }
         />
       </div>
+
+      <ThreadViewDialog
+        thread={viewThread}
+        bucketName={
+          viewThread?.bucketId
+            ? (bucketNameById.get(viewThread.bucketId) ?? null)
+            : null
+        }
+        onOpenChange={(open) => {
+          if (!open) setViewThread(null);
+        }}
+      />
 
       <BucketCreateDialog
         key={editBucket?.id ?? "create"}

@@ -9,12 +9,14 @@ export function InboxList({
   showBucket,
   isClassifying,
   emptyMessage,
+  onOpen,
 }: {
   threads: ApiThread[];
   bucketNameById: Map<string, string>;
   showBucket: boolean;
   isClassifying: boolean;
   emptyMessage: string;
+  onOpen: (thread: ApiThread) => void;
 }) {
   if (threads.length === 0) {
     return (
@@ -32,6 +34,7 @@ export function InboxList({
           bucketName={t.bucketId ? (bucketNameById.get(t.bucketId) ?? null) : null}
           showBucket={showBucket}
           isClassifying={isClassifying}
+          onOpen={onOpen}
         />
       ))}
     </div>

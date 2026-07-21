@@ -93,10 +93,11 @@ in. Send me any email address and I'll add it as a test user within the hour.
 ## Privacy
 
 What gets stored: subjects, senders, and Gmail's ~100-character preview
-snippets — never full message bodies (threads are fetched with
-`format=metadata`; MIME parsing doesn't exist in this codebase). Where: a Neon
-Postgres instance. Gmail access is read-only. I'll delete any reviewer's data
-on request.
+snippets — never full message bodies. Classification and embeddings only ever
+see that metadata. Opening a thread in the read view fetches its full messages
+from Gmail on demand, renders them in a sandboxed frame, and writes nothing to
+the database. Where: a Neon Postgres instance. Gmail access is read-only. I'll
+delete any reviewer's data on request.
 
 ## Eval
 
