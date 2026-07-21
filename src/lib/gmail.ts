@@ -1,5 +1,5 @@
 import pLimit from "p-limit";
-import { decodeHtmlEntities } from "./html-entities";
+import { cleanSnippet, decodeRfc2047 } from "./html-entities";
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -94,13 +94,15 @@ export async function getThreadMetadata(
   // date from the last (most recent activity), matching how Gmail lists threads.
   const first = messages[0];
   const last = messages[messages.length - 1];
-  const sender = header(first, "From");
+  const rawSender = header(first, "From");
+  const sender = rawSender ? decodeRfc2047(rawSender) : null;
+  const rawSubject = header(first, "Subject");
   return {
     id: thread.id,
-    subject: header(first, "Subject"),
+    subject: rawSubject ? decodeRfc2047(rawSubject) : null,
     sender,
     senderDomain: extractDomain(sender),
-    snippet: last?.snippet ? decodeHtmlEntities(last.snippet) : null,
+    snippet: last?.snippet ? cleanSnippet(last.snippet) : null,
     internalDate: last?.internalDate ? new Date(Number(last.internalDate)) : null,
   };
 }
@@ -148,8 +150,9 @@ export async function getThreadMessages(
   return (thread.messages ?? []).map((m) => {
     const html = findBody(m.payload, "text/html");
     const text = findBody(m.payload, "text/plain");
+    const rawFrom = header(m, "From");
     return {
-      from: header(m, "From"),
+      from: rawFrom ? decodeRfc2047(rawFrom) : null,
       date: m.internalDate ? new Date(Number(m.internalDate)).toISOString() : null,
       html: html ? Buffer.from(html, "base64url").toString("utf8") : null,
       text: text ? Buffer.from(text, "base64url").toString("utf8") : null,

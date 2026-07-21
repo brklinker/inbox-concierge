@@ -123,6 +123,7 @@ export async function evaluateBucketFit(
   batch: (ClassifiableThread & { currentBucket: string })[],
   newBucket: BucketCriteria,
   allBuckets: BucketCriteria[],
+  isRetry = false,
 ): Promise<BucketFitDecision[]> {
   if (batch.length === 0) return [];
   const schema = z.object({
@@ -157,10 +158,23 @@ For each input thread (each includes its current bucket as "currentBucket"), dec
   });
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) throw new Error("Bucket fit returned no parsed output");
+  // Same id-echo guard as classifyBatch: duplicated ids mean a verdict got
+  // stamped with the wrong thread's id — here that would move the wrong
+  // thread into the new bucket. Drop and resend.
   const inputIds = new Set(batch.map((t) => t.id));
-  return parsed.results
-    .filter((r) => inputIds.has(r.id))
+  const idCounts = new Map<string, number>();
+  for (const r of parsed.results) {
+    if (inputIds.has(r.id)) idCounts.set(r.id, (idCounts.get(r.id) ?? 0) + 1);
+  }
+  const results = parsed.results
+    .filter((r) => idCounts.get(r.id) === 1)
     .map((r) => ({ ...r, confidence: Math.max(0, Math.min(1, r.confidence)) }));
+  if (!isRetry && results.length < batch.length) {
+    const returned = new Set(results.map((r) => r.id));
+    const missing = batch.filter((t) => !returned.has(t.id));
+    results.push(...(await evaluateBucketFit(missing, newBucket, allBuckets, true)));
+  }
+  return results;
 }
 
 export function chunk<T>(items: T[], size: number): T[][] {

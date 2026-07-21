@@ -42,6 +42,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
   const [editBucket, setEditBucket] = useState<ApiBucket | null>(null);
   const [viewThread, setViewThread] = useState<ApiThread | null>(null);
+  const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
   const classifyRunning = useRef(false);
   const hasLoaded = useRef(false);
 
@@ -187,6 +188,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   };
 
   const deleteBucket = async (bucket: ApiBucket) => {
+    setConfirmDeleteBucket(null);
     try {
       const res = await fetch(`/api/buckets/${bucket.id}`, { method: "DELETE" });
       const data = await res.json();
@@ -245,13 +247,17 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
     else unsortedCount += 1;
   }
   const bucketNameById = new Map(bucketList.map((b) => [b.id, b.name]));
+  // The Unsorted tab disappears once everything is classified; don't leave
+  // the user staring at its empty filter.
+  const effectiveActive =
+    active === UNSORTED_TAB && unsortedCount === 0 ? ALL_TAB : active;
   const visible =
-    active === ALL_TAB
+    effectiveActive === ALL_TAB
       ? allThreads
-      : active === UNSORTED_TAB
+      : effectiveActive === UNSORTED_TAB
         ? allThreads.filter((t) => !t.bucketId)
-        : allThreads.filter((t) => t.bucketId === active);
-  const activeBucket = bucketList.find((b) => b.id === active) ?? null;
+        : allThreads.filter((t) => t.bucketId === effectiveActive);
+  const activeBucket = bucketList.find((b) => b.id === effectiveActive) ?? null;
   const isClassifying =
     progress.phase === "classifying" || progress.phase === "reviewing";
 
@@ -294,7 +300,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           counts={counts}
           unsortedCount={unsortedCount}
           totalCount={allThreads.length}
-          active={active}
+          active={effectiveActive}
           onSelect={setActive}
         />
         <Button
@@ -325,7 +331,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             </button>
             <button
               className="text-destructive underline"
-              onClick={() => deleteBucket(activeBucket)}
+              onClick={() => setConfirmDeleteBucket(activeBucket)}
             >
               Delete
             </button>
@@ -341,11 +347,11 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         <InboxList
           threads={visible}
           bucketNameById={bucketNameById}
-          showBucket={active === ALL_TAB || active === UNSORTED_TAB}
+          showBucket={effectiveActive === ALL_TAB || effectiveActive === UNSORTED_TAB}
           isClassifying={isClassifying}
           onOpen={setViewThread}
           emptyMessage={
-            active === ALL_TAB
+            effectiveActive === ALL_TAB
               ? "No threads in your inbox."
               : isClassifying
                 ? "Nothing here yet — still sorting."
@@ -376,6 +382,35 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           setBucketList((prev) => prev.map((b) => (b.id === bucket.id ? bucket : b)))
         }
       />
+
+      <Dialog
+        open={!!confirmDeleteBucket}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteBucket(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete &quot;{confirmDeleteBucket?.name}&quot;?</DialogTitle>
+            <DialogDescription>
+              Its {confirmDeleteBucket ? (counts.get(confirmDeleteBucket.id) ?? 0) : 0}{" "}
+              threads will be re-sorted into your remaining buckets. This can&apos;t
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteBucket(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => confirmDeleteBucket && deleteBucket(confirmDeleteBucket)}
+            >
+              Delete & re-sort
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmReclassify} onOpenChange={setConfirmReclassify}>
         <DialogContent>

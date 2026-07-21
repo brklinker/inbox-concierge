@@ -127,7 +127,9 @@ export async function DELETE(
                 reason: r.reason,
                 classifiedAt: now,
               })
-              .where(eq(threads.id, r.id));
+              .where(
+                and(eq(threads.id, r.id), eq(threads.userEmail, userEmail)),
+              );
             reassigned.push({
               id: r.id,
               bucketId: target.id,

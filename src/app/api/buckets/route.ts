@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
             reason: d.reason,
             classifiedAt: now,
           })
-          .where(eq(threads.id, d.id)),
+          .where(and(eq(threads.id, d.id), eq(threads.userEmail, userEmail))),
       ),
     ),
   );

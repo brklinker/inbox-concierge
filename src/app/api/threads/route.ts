@@ -4,10 +4,11 @@ import { buckets, threads } from "@/db/schema";
 import { seedDefaultBuckets } from "@/lib/default-buckets";
 import { getThreadMetadata, listThreadIds } from "@/lib/gmail";
 import { toApiBucket } from "@/lib/serialize";
-import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
             classifiedAt: threads.classifiedAt,
           })
           .from(threads)
-          .where(inArray(threads.id, ids))
+          .where(and(inArray(threads.id, ids), eq(threads.userEmail, userEmail)))
           .orderBy(desc(threads.internalDate))
       : Promise.resolve([]),
     db

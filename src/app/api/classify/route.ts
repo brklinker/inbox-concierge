@@ -62,10 +62,20 @@ export async function POST(req: NextRequest) {
   const targets = await db.select().from(threads).where(targetFilter);
 
   const encoder = new TextEncoder();
+  // If the client disconnects mid-run, enqueue() starts throwing. The work
+  // itself should finish (DB writes make the run durable; a reload picks the
+  // results up), so sends become no-ops instead of killing the pipeline.
+  let clientGone = false;
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (payload: object) =>
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      const send = (payload: object) => {
+        if (clientGone) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        } catch {
+          clientGone = true;
+        }
+      };
 
       try {
         const batches = chunk(targets, CLASSIFY_BATCH_SIZE);
@@ -88,7 +98,9 @@ export async function POST(req: NextRequest) {
                 db
                   .update(threads)
                   .set({ embedding: vectors[i] })
-                  .where(eq(threads.id, t.id)),
+                  .where(
+                    and(eq(threads.id, t.id), eq(threads.userEmail, userEmail)),
+                  ),
               ),
             ),
           );
@@ -123,7 +135,9 @@ export async function POST(req: NextRequest) {
                         reason: r.reason,
                         classifiedAt: now,
                       })
-                      .where(eq(threads.id, r.id));
+                      .where(
+                        and(eq(threads.id, r.id), eq(threads.userEmail, userEmail)),
+                      );
                     streamed.push({
                       id: r.id,
                       bucketId: bucket.id,
@@ -226,7 +240,9 @@ export async function POST(req: NextRequest) {
                   reason: r.reason,
                   classifiedAt: new Date(),
                 })
-                .where(eq(threads.id, r.id));
+                .where(
+                  and(eq(threads.id, r.id), eq(threads.userEmail, userEmail)),
+                );
               corrected.push({
                 id: r.id,
                 bucketId: bucket.id,
@@ -251,8 +267,17 @@ export async function POST(req: NextRequest) {
           message: e instanceof Error ? e.message : String(e),
         });
       } finally {
-        controller.close();
+        if (!clientGone) {
+          try {
+            controller.close();
+          } catch {
+            // Already closed/errored; nothing to do.
+          }
+        }
       }
+    },
+    cancel() {
+      clientGone = true;
     },
   });
 
