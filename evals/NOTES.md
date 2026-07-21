@@ -3,6 +3,17 @@
 Terse, dated, decision-shaped. One entry per prompt version. Results files in
 `results/` are the raw output of `npm run eval` for each version.
 
+## What the number means (methodology)
+
+The gold set is one person's judgment of their own mail, so accuracy here
+means "agreement with the mailbox owner" — which is the product's actual job;
+triage has no objective ground truth. Discipline for prompt iteration: a miss
+caused by general reasoning gets a prompt fix; a miss caused by personal
+preference gets a bucket-description edit or an in-app correction instead.
+Prompt edits chasing one user's idiosyncrasies overfit. The harness groups by
+user_email, so any other user who labels their own threads gets their own
+number against their own judgment.
+
 ## 2026-07-21 — v1 (baseline)
 
 Initial prompt: bucket list with descriptions, decision rules (sender
