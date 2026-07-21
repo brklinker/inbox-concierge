@@ -55,6 +55,7 @@ Return exactly one result per input thread, echoing its id. The bucket field mus
 export async function classifyBatch(
   batch: ClassifiableThread[],
   bucketList: BucketCriteria[],
+  isRetry = false,
 ): Promise<Classification[]> {
   if (batch.length === 0) return [];
   const names = bucketList.map((b) => b.name);
@@ -82,12 +83,20 @@ export async function classifyBatch(
   if (!parsed) throw new Error("Classification returned no parsed output");
   // Guard against dropped/hallucinated ids: keep only results matching inputs.
   const inputIds = new Set(batch.map((t) => t.id));
-  return parsed.results
+  const results = parsed.results
     .filter((r) => inputIds.has(r.id))
     .map((r) => ({
       ...r,
       confidence: Math.max(0, Math.min(1, r.confidence)),
     }));
+  // The model occasionally drops an id from a batch (~1/200 threads); resend
+  // just the missing ones once rather than leaving them unclassified.
+  if (!isRetry && results.length < batch.length) {
+    const returned = new Set(results.map((r) => r.id));
+    const missing = batch.filter((t) => !returned.has(t.id));
+    results.push(...(await classifyBatch(missing, bucketList, true)));
+  }
+  return results;
 }
 
 export interface BucketFitDecision {
