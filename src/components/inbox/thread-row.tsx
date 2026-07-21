@@ -47,11 +47,20 @@ export function ThreadRow({
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen(thread);
       }}
-      className={`grid cursor-pointer grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${sorted ? "anim-arrive" : ""} ${
+      className={`grid cursor-pointer grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${
+        // Animate only fresh arrivals (arrivalDelay set), staggered within
+        // their batch; pending rows dim while the concierge is filing.
+        sorted && thread.arrivalDelay !== undefined ? "anim-arrive" : ""
+      } ${!sorted && isClassifying ? "opacity-50" : ""} ${
         // The arrive animation leaves each row as its own stacking context,
         // so an open menu must lift its whole row above later siblings.
         menuOpen ? "relative z-[70]" : ""
       }`}
+      style={
+        sorted && thread.arrivalDelay
+          ? { animationDelay: `${thread.arrivalDelay}ms` }
+          : undefined
+      }
     >
       <div className="grid size-8 place-items-center rounded-full bg-neutral-200 text-sm font-semibold text-press-800">
         {initial}

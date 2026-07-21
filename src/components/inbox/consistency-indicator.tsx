@@ -1,5 +1,8 @@
 "use client";
 
+import { senderName } from "@/lib/format";
+import type { ApiThread } from "@/lib/types";
+
 export interface ReviewSummary {
   reviewed: number;
   corrections: { id: string; bucket: string | null; previousBucket: string }[];
@@ -7,13 +10,20 @@ export interface ReviewSummary {
 
 export function ConsistencyIndicator({
   summary,
+  resolveThread,
+  onOpenThread,
   onDismiss,
 }: {
   summary: ReviewSummary | null;
+  resolveThread: (id: string) => ApiThread | undefined;
+  onOpenThread: (thread: ApiThread) => void;
   onDismiss: () => void;
 }) {
   if (!summary || summary.reviewed === 0) return null;
-  const corrected = summary.corrections.length;
+  const corrections = summary.corrections
+    .map((c) => ({ ...c, thread: resolveThread(c.id) }))
+    .filter((c): c is typeof c & { thread: ApiThread } => !!c.thread);
+
   return (
     <div
       className="ribbon anim-arrive mb-5"
@@ -42,18 +52,51 @@ export function ConsistencyIndicator({
             className="anim-pop text-[38px] font-semibold leading-none text-press2-700"
             style={{ animationDelay: "0.12s" }}
           >
-            {corrected}
+            {corrections.length}
           </span>
           <span className="text-[13px] text-muted-foreground">
             re-filed for consistency
           </span>
         </span>
       </div>
-      <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
-        {corrected > 0
-          ? "The concierge cross-checked its own work: these threads sat oddly against similar ones and were quietly corrected. Your buckets now agree with each other."
-          : "The concierge cross-checked its own work against similar threads and confirmed every placement."}
-      </p>
+      {corrections.length > 0 ? (
+        <>
+          <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
+            These sat oddly against similar threads and were quietly re-filed.
+            Click one to verify — and move it back if the concierge got it
+            wrong; it learns from that too.
+          </p>
+          <ul className="mt-3 border-t border-ink/10">
+            {corrections.map((c) => (
+              <li key={c.id} className="border-b border-ink/10">
+                <button
+                  className="flex w-full items-baseline gap-3 px-1 py-2 text-left hover:bg-ink/[0.035]"
+                  onClick={() => onOpenThread(c.thread)}
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    <span className="font-semibold">
+                      {senderName(c.thread.sender)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      — {c.thread.subject || "(no subject)"}
+                    </span>
+                  </span>
+                  <span className="flex-none text-[13px] text-muted-foreground">
+                    {c.previousBucket}{" "}
+                    <span className="text-press2-700">→ {c.bucket}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
+          The concierge cross-checked its own work against similar threads and
+          confirmed every placement.
+        </p>
+      )}
     </div>
   );
 }

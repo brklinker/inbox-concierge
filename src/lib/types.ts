@@ -11,6 +11,8 @@ export interface ApiThread {
   confidence: number | null;
   reason: string | null;
   classifiedAt: string | null;
+  /** Client-only: staggers the arrival animation within a batch. */
+  arrivalDelay?: number;
 }
 
 export interface ApiBucket {

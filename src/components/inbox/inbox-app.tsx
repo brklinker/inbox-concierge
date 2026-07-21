@@ -111,7 +111,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       setThreads((prev) => {
         if (!prev) return prev;
         const next = new Map(prev);
-        for (const r of results) {
+        results.forEach((r, i) => {
           const t = next.get(r.id);
           if (t) {
             next.set(r.id, {
@@ -120,9 +120,11 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
               confidence: r.confidence,
               reason: r.reason,
               classifiedAt: new Date().toISOString(),
+              // Cascade the batch's arrivals instead of landing all at once.
+              arrivalDelay: i * 55,
             });
           }
-        }
+        });
         return next;
       });
     },
@@ -496,6 +498,8 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           {!isClassifying && !scan && !reviewDismissed && (
             <ConsistencyIndicator
               summary={review}
+              resolveThread={(id) => threads.get(id)}
+              onOpenThread={setViewThread}
               onDismiss={() => setReviewDismissed(true)}
             />
           )}
