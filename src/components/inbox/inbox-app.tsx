@@ -41,6 +41,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
   const [editBucket, setEditBucket] = useState<ApiBucket | null>(null);
   const classifyRunning = useRef(false);
+  const hasLoaded = useRef(false);
 
   const applyResults = useCallback(
     (results: NonNullable<ClassifyEvent["results"]>) => {
@@ -125,6 +126,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         const res = await fetch(`/api/threads${refresh ? "?refresh=1" : ""}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? `Fetch failed (${res.status})`);
+        hasLoaded.current = true;
         setLoadError(null);
         const map = new Map<string, ApiThread>(
           (data.threads as ApiThread[]).map((t) => [t.id, t]),
@@ -138,7 +140,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         return data.threads as ApiThread[];
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        if (threads === null) setLoadError(message);
+        if (!hasLoaded.current) setLoadError(message);
         else toast.error(message);
         return null;
       } finally {

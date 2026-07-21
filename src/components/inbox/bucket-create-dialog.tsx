@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApiBucket } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface BucketCreateResult {
   bucket: ApiBucket;
@@ -51,11 +51,16 @@ export function BucketCreateDialog({
     setPending(false);
   };
 
-  const handleOpenChange = (next: boolean) => {
-    if (next && editBucket) {
+  // The parent opens the dialog programmatically, so seed edit fields on open
+  // here rather than in onOpenChange (which only fires on user interaction).
+  useEffect(() => {
+    if (open && editBucket) {
       setName(editBucket.name);
       setDescription(editBucket.description ?? "");
     }
+  }, [open, editBucket]);
+
+  const handleOpenChange = (next: boolean) => {
     if (!next) reset();
     onOpenChange(next);
   };
