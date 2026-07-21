@@ -1,0 +1,97 @@
+import { zodResponseFormat } from "openai/helpers/zod";
+import { z } from "zod";
+import { CLASSIFY_MODEL, openai } from "./openai";
+
+// Bump when the prompt changes; eval results in evals/results/ are keyed on this.
+export const PROMPT_VERSION = "v1";
+
+export const CLASSIFY_BATCH_SIZE = 15;
+export const CLASSIFY_CONCURRENCY = 5;
+
+export interface ClassifiableThread {
+  id: string;
+  sender: string | null;
+  subject: string | null;
+  snippet: string | null;
+  date: string | null;
+  /** Extra per-thread context, used by the consistency review pass. */
+  note?: string;
+}
+
+export interface BucketCriteria {
+  name: string;
+  description: string | null;
+}
+
+export interface Classification {
+  id: string;
+  bucket: string;
+  confidence: number;
+  reason: string;
+}
+
+function buildSystemPrompt(bucketList: BucketCriteria[]): string {
+  const bucketLines = bucketList
+    .map((b) => `- ${b.name}: ${b.description ?? "(no description)"}`)
+    .join("\n");
+  return `You are an email triage assistant. Assign each input thread to exactly one bucket.
+
+Buckets:
+${bucketLines}
+
+Decision rules:
+- You see only sender, subject, snippet, and date — never the full body. Judge from those signals.
+- Sender relationship dominates: a real person writing to the user directly outranks any automated or list sender.
+- List mail (unsubscribe language, marketing tone, no-reply senders) is not Important unless it carries a personal, time-sensitive obligation (interview, bill due, security alert).
+- Urgency cues: explicit deadlines, "action required", interviews, offers, payments due.
+- Error costs are asymmetric: putting a thread in a higher-attention bucket than needed is a minor annoyance; burying real mail in Auto-Archive is catastrophic (a missed job offer). When uncertain between two buckets, choose the higher-attention one. Only assign Auto-Archive when you are highly confident the thread is worthless.
+- confidence: your 0-1 estimate that the assignment is correct.
+- reason: one short phrase (under 12 words) naming the deciding signal.
+- If a thread has a "note" with context from similar threads, weigh it, but the thread's own content decides.
+
+Return exactly one result per input thread, echoing its id. The bucket field must be exactly one of the bucket names listed above.`;
+}
+
+export async function classifyBatch(
+  batch: ClassifiableThread[],
+  bucketList: BucketCriteria[],
+): Promise<Classification[]> {
+  if (batch.length === 0) return [];
+  const names = bucketList.map((b) => b.name);
+  const schema = z.object({
+    results: z.array(
+      z.object({
+        id: z.string(),
+        bucket: z.enum(names as [string, ...string[]]),
+        confidence: z.number(),
+        reason: z.string(),
+      }),
+    ),
+  });
+  const completion = await openai.chat.completions.parse({
+    model: CLASSIFY_MODEL,
+    // Temperature 0: repeatable on camera and in evals.
+    temperature: 0,
+    response_format: zodResponseFormat(schema, "classification"),
+    messages: [
+      { role: "system", content: buildSystemPrompt(bucketList) },
+      { role: "user", content: JSON.stringify(batch) },
+    ],
+  });
+  const parsed = completion.choices[0]?.message.parsed;
+  if (!parsed) throw new Error("Classification returned no parsed output");
+  // Guard against dropped/hallucinated ids: keep only results matching inputs.
+  const inputIds = new Set(batch.map((t) => t.id));
+  return parsed.results
+    .filter((r) => inputIds.has(r.id))
+    .map((r) => ({
+      ...r,
+      confidence: Math.max(0, Math.min(1, r.confidence)),
+    }));
+}
+
+export function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
