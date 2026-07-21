@@ -8,7 +8,6 @@ import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicato
 import { InboxList } from "./inbox-list";
 import { ALL_TAB, SectionsNav, UNSORTED_TAB } from "./sections-nav";
 import { SettingsDialog } from "./settings-dialog";
-import { ThreadViewDialog } from "./thread-view-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -99,7 +98,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [editBucket, setEditBucket] = useState<ApiBucket | null>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [preset, setPreset] = useState<BucketSuggestionItem | null>(null);
-  const [viewThread, setViewThread] = useState<ApiThread | null>(null);
   const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
   const [confirmDeleteData, setConfirmDeleteData] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -499,7 +497,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             <ConsistencyIndicator
               summary={review}
               resolveThread={(id) => threads.get(id)}
-              onOpenThread={setViewThread}
+              onJumpToBucket={(bucketId) => setActive(bucketId)}
               onDismiss={() => setReviewDismissed(true)}
             />
           )}
@@ -510,7 +508,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             badgeClassById={badgeClassById}
             moveTargets={moveTargets}
             isClassifying={isClassifying}
-            onOpen={setViewThread}
             onMove={moveThread}
             emptyMessage={
               effectiveActive === ALL_TAB
@@ -522,27 +519,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           />
         </main>
       </div>
-
-      <ThreadViewDialog
-        thread={viewThread}
-        buckets={bucketList}
-        onOpenChange={(open) => {
-          if (!open) setViewThread(null);
-        }}
-        onCorrected={(result) => {
-          applyResults([result]);
-          setViewThread((prev) =>
-            prev && prev.id === result.id
-              ? {
-                  ...prev,
-                  bucketId: result.bucketId,
-                  confidence: result.confidence,
-                  reason: result.reason,
-                }
-              : prev,
-          );
-        }}
-      />
 
       <SettingsDialog
         open={settingsOpen}

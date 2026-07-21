@@ -23,7 +23,7 @@ vi.mock("@/auth", () => ({ auth: authMock }));
 vi.mock("@/db", () => ({ db: dbMock }));
 
 import { GET as threadsGet } from "../threads/route";
-import { GET as threadGet, PATCH as threadPatch } from "../threads/[id]/route";
+import { PATCH as threadPatch } from "../threads/[id]/route";
 import { POST as classifyPost } from "../classify/route";
 import { GET as bucketsGet, POST as bucketsPost } from "../buckets/route";
 import { DELETE as bucketDelete, PATCH as bucketPatch } from "../buckets/[id]/route";
@@ -44,7 +44,6 @@ describe("every route rejects unauthenticated requests", () => {
     authMock.mockResolvedValue(null);
     const responses = await Promise.all([
       threadsGet(req("/api/threads")),
-      threadGet(req("/api/threads/t1"), params),
       threadPatch(req("/api/threads/t1", { method: "PATCH" }), params),
       classifyPost(req("/api/classify", { method: "POST" })),
       bucketsGet(),
@@ -55,7 +54,7 @@ describe("every route rejects unauthenticated requests", () => {
       labelPost(req("/api/label", { method: "POST" })),
       meDelete(),
     ]);
-    expect(responses.map((r) => r.status)).toEqual(Array(11).fill(401));
+    expect(responses.map((r) => r.status)).toEqual(Array(10).fill(401));
   });
 
   it("treats a failed token refresh as unauthenticated", async () => {

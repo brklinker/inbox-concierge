@@ -10,7 +10,6 @@ export function InboxList({
   moveTargets,
   isClassifying,
   emptyMessage,
-  onOpen,
   onMove,
 }: {
   threads: ApiThread[];
@@ -19,7 +18,6 @@ export function InboxList({
   moveTargets: MoveTarget[];
   isClassifying: boolean;
   emptyMessage: string;
-  onOpen: (thread: ApiThread) => void;
   onMove: (thread: ApiThread, bucketId: string) => void;
 }) {
   if (threads.length === 0) {
@@ -40,7 +38,6 @@ export function InboxList({
           badgeClass={t.bucketId ? (badgeClassById.get(t.bucketId) ?? null) : null}
           isClassifying={isClassifying}
           moveTargets={moveTargets}
-          onOpen={onOpen}
           onMove={onMove}
         />
       ))}

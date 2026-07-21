@@ -41,10 +41,9 @@ export default async function Home() {
           </Button>
         </form>
         <p className="mt-6 max-w-[54ch] text-[13px] text-muted-foreground">
-          Read-only Gmail access. Classification sees only subjects, senders,
-          and preview snippets — full bodies are fetched just-in-time when you
-          open a thread, and never stored. Delete everything with one click,
-          any time.
+          Read-only Gmail access. Only subjects, senders, and preview snippets
+          are ever fetched — never full message bodies. Delete everything with
+          one click, any time.
         </p>
       </main>
     );

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getThreadMessages, getThreadMetadata, listThreadIds } from "../gmail";
+import { getThreadMetadata, listThreadIds } from "../gmail";
 
 function jsonResponse(body: object, status = 200) {
   return new Response(JSON.stringify(body), { status });
@@ -93,43 +93,3 @@ describe("getThreadMetadata", () => {
   });
 });
 
-describe("getThreadMessages", () => {
-  it("walks nested MIME parts and decodes base64url bodies", async () => {
-    const html = Buffer.from("<p>hello</p>").toString("base64url");
-    const text = Buffer.from("hello").toString("base64url");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        jsonResponse({
-          messages: [
-            {
-              internalDate: "1700000000000",
-              payload: {
-                mimeType: "multipart/mixed",
-                headers: [{ name: "From", value: "A <a@x.com>" }],
-                parts: [
-                  {
-                    mimeType: "multipart/alternative",
-                    parts: [
-                      { mimeType: "text/plain", body: { data: text } },
-                      { mimeType: "text/html", body: { data: html } },
-                    ],
-                  },
-                ],
-              },
-            },
-          ],
-        }),
-      ),
-    );
-    const messages = await getThreadMessages("token", "t1");
-    expect(messages).toEqual([
-      {
-        from: "A <a@x.com>",
-        date: new Date(1700000000000).toISOString(),
-        html: "<p>hello</p>",
-        text: "hello",
-      },
-    ]);
-  });
-});

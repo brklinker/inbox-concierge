@@ -23,7 +23,6 @@ export function ThreadRow({
   badgeClass,
   isClassifying,
   moveTargets,
-  onOpen,
   onMove,
 }: {
   thread: ApiThread;
@@ -31,7 +30,6 @@ export function ThreadRow({
   badgeClass: string | null;
   isClassifying: boolean;
   moveTargets: MoveTarget[];
-  onOpen: (thread: ApiThread) => void;
   onMove: (thread: ApiThread, bucketId: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -41,13 +39,7 @@ export function ThreadRow({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(thread)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onOpen(thread);
-      }}
-      className={`grid cursor-pointer grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${
+      className={`grid grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${
         // Animate only fresh arrivals (arrivalDelay set), staggered within
         // their batch; pending rows dim while the concierge is filing.
         sorted && thread.arrivalDelay !== undefined ? "anim-arrive" : ""

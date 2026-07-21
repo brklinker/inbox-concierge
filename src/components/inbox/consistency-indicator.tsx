@@ -5,18 +5,23 @@ import type { ApiThread } from "@/lib/types";
 
 export interface ReviewSummary {
   reviewed: number;
-  corrections: { id: string; bucket: string | null; previousBucket: string }[];
+  corrections: {
+    id: string;
+    bucketId: string | null;
+    bucket: string | null;
+    previousBucket: string;
+  }[];
 }
 
 export function ConsistencyIndicator({
   summary,
   resolveThread,
-  onOpenThread,
+  onJumpToBucket,
   onDismiss,
 }: {
   summary: ReviewSummary | null;
   resolveThread: (id: string) => ApiThread | undefined;
-  onOpenThread: (thread: ApiThread) => void;
+  onJumpToBucket: (bucketId: string) => void;
   onDismiss: () => void;
 }) {
   if (!summary || summary.reviewed === 0) return null;
@@ -63,15 +68,15 @@ export function ConsistencyIndicator({
         <>
           <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
             These sat oddly against similar threads and were quietly re-filed.
-            Click one to verify — and move it back if the concierge got it
-            wrong; it learns from that too.
+            Click one to see it in its new bucket — its badge moves it back if
+            the concierge got it wrong, and it learns from that too.
           </p>
           <ul className="mt-3 border-t border-ink/10">
             {corrections.map((c) => (
               <li key={c.id} className="border-b border-ink/10">
                 <button
                   className="flex w-full items-baseline gap-3 px-1 py-2 text-left hover:bg-ink/[0.035]"
-                  onClick={() => onOpenThread(c.thread)}
+                  onClick={() => c.bucketId && onJumpToBucket(c.bucketId)}
                 >
                   <span className="min-w-0 flex-1 truncate text-sm">
                     <span className="font-semibold">

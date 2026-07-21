@@ -46,18 +46,13 @@ toward Important is a minor annoyance; burying real mail in Auto-Archive is a
 missed job offer. When uncertain, the model is instructed to pick the
 higher-attention bucket.
 
-**Why there's a read view at all** (the brief didn't require one): you can't
-judge a triage system without reading what it triaged — the read view is how
-a silently misfiled thread was caught during development — and re-filing a
-thread is only an informed decision after reading it. It exists to serve the
-correction loop, and it fetches bodies on demand without ever storing them.
-
-**Corrections are a feedback loop.** Re-file a thread from its read view and
-the placement becomes human truth: it is never reclassified, auto-reviewed, or
-auto-moved again, and the most recent corrections ride along in every future
-classification prompt as authoritative examples of your preferences.
-Corrections are kept separate from the eval gold set — they're made after
-seeing model output, which is exactly the anchoring the gold set must avoid.
+**Corrections are a feedback loop.** Every thread's bucket badge opens a
+Move-to menu right in the list; re-file a thread and the placement becomes
+human truth: it is never reclassified, auto-reviewed, or auto-moved again,
+and the most recent corrections ride along in every future classification
+prompt as authoritative examples of your preferences. Corrections are kept
+separate from the eval gold set — they're made after seeing model output,
+which is exactly the anchoring the gold set must avoid.
 
 ## How I know it works
 
@@ -116,11 +111,10 @@ in. Send me any email address and I'll add it as a test user within the hour.
 ## Privacy
 
 What gets stored: subjects, senders, and Gmail's ~100-character preview
-snippets — never full message bodies. Classification and embeddings only ever
-see that metadata. Opening a thread in the read view fetches its full messages
-from Gmail on demand, renders them in a sandboxed frame, and writes nothing to
-the database. Where: a Neon Postgres instance. Gmail access is read-only. I'll
-delete any reviewer's data on request.
+snippets — never full message bodies, which are never even fetched (threads
+come down with `format=metadata`; nothing in this codebase requests a body).
+Where: a Neon Postgres instance. Gmail access is read-only, and "Delete my
+data" in the app removes everything on demand.
 
 ## Eval
 
