@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
       if ((t.confidence ?? 0) < CANDIDATE_CONFIDENCE) candidateIds.add(t.id);
     }
   }
-  const candidates = pool.filter((t) => candidateIds.has(t.id));
+  // Human-placed threads are never auto-moved, even into a brand-new bucket.
+  const candidates = pool.filter((t) => candidateIds.has(t.id) && !t.correctedAt);
 
   const bucketNameById = new Map(existing.map((b) => [b.id, b.name]));
   const allCriteria = [...existing, bucket].map((b) => ({

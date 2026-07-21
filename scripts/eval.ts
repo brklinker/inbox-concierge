@@ -20,6 +20,7 @@ import {
   chunk,
   classifyBatch,
 } from "@/lib/classify";
+import { fetchCorrections } from "@/lib/corrections";
 import { asc, eq, isNotNull } from "drizzle-orm";
 import { mkdirSync, writeFileSync } from "node:fs";
 import pLimit from "p-limit";
@@ -74,6 +75,12 @@ async function main() {
       description: b.description,
     }));
     const userGold = gold.filter((t) => t.userEmail === userEmail);
+    // Same code path as production, including correction examples — but a
+    // gold thread's own correction never rides along in its prompt.
+    const corrections = await fetchCorrections(
+      userEmail,
+      new Set(userGold.map((t) => t.id)),
+    );
     const limit = pLimit(CLASSIFY_CONCURRENCY);
     const results = (
       await Promise.all(
@@ -88,6 +95,7 @@ async function main() {
                 date: t.internalDate?.toISOString() ?? null,
               })),
               criteria,
+              corrections,
             ),
           ),
         ),

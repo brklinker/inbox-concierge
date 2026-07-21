@@ -30,14 +30,42 @@ export interface Classification {
   reason: string;
 }
 
-function buildSystemPrompt(bucketList: BucketCriteria[]): string {
+/** A thread the user manually re-filed; fed to the prompt as ground truth. */
+export interface CorrectionExample {
+  sender: string | null;
+  subject: string | null;
+  snippet: string | null;
+  bucket: string;
+}
+
+/** How many recent corrections ride along in the prompt. */
+export const CORRECTION_EXAMPLE_LIMIT = 15;
+
+function correctionLines(corrections: CorrectionExample[]): string {
+  if (corrections.length === 0) return "";
+  const lines = corrections
+    .map(
+      (c) =>
+        `- From: ${c.sender ?? "?"} | Subject: ${c.subject ?? "(none)"} | ${(c.snippet ?? "").slice(0, 120)} → ${c.bucket}`,
+    )
+    .join("\n");
+  return `
+
+The user has manually re-filed these threads. Treat them as authoritative examples of this user's preferences — when a new thread closely resembles one of these, follow the user's placement:
+${lines}`;
+}
+
+function buildSystemPrompt(
+  bucketList: BucketCriteria[],
+  corrections: CorrectionExample[],
+): string {
   const bucketLines = bucketList
     .map((b) => `- ${b.name}: ${b.description ?? "(no description)"}`)
     .join("\n");
   return `You are an email triage assistant. Assign each input thread to exactly one bucket.
 
 Buckets:
-${bucketLines}
+${bucketLines}${correctionLines(corrections)}
 
 Decision rules:
 - You see only sender, subject, snippet, and date — never the full body. Judge from those signals.
@@ -55,6 +83,7 @@ Return exactly one result per input thread, echoing its id. The bucket field mus
 export async function classifyBatch(
   batch: ClassifiableThread[],
   bucketList: BucketCriteria[],
+  corrections: CorrectionExample[] = [],
   isRetry = false,
 ): Promise<Classification[]> {
   if (batch.length === 0) return [];
@@ -75,7 +104,7 @@ export async function classifyBatch(
     temperature: 0,
     response_format: zodResponseFormat(schema, "classification"),
     messages: [
-      { role: "system", content: buildSystemPrompt(bucketList) },
+      { role: "system", content: buildSystemPrompt(bucketList, corrections) },
       { role: "user", content: JSON.stringify(batch) },
     ],
   });
@@ -102,7 +131,7 @@ export async function classifyBatch(
   if (!isRetry && results.length < batch.length) {
     const returned = new Set(results.map((r) => r.id));
     const missing = batch.filter((t) => !returned.has(t.id));
-    results.push(...(await classifyBatch(missing, bucketList, true)));
+    results.push(...(await classifyBatch(missing, bucketList, corrections, true)));
   }
   return results;
 }

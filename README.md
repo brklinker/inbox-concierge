@@ -42,6 +42,13 @@ toward Important is a minor annoyance; burying real mail in Auto-Archive is a
 missed job offer. When uncertain, the model is instructed to pick the
 higher-attention bucket.
 
+**Corrections are a feedback loop.** Re-file a thread from its read view and
+the placement becomes human truth: it is never reclassified, auto-reviewed, or
+auto-moved again, and the most recent corrections ride along in every future
+classification prompt as authoritative examples of your preferences.
+Corrections are kept separate from the eval gold set — they're made after
+seeing model output, which is exactly the anchoring the gold set must avoid.
+
 ## How I know it works
 
 `npm run eval` runs the production classification code path against a

@@ -1,0 +1,1 @@
+ALTER TABLE "threads" ADD COLUMN "corrected_at" timestamp with time zone;

@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -8,10 +7,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, senderName } from "@/lib/format";
-import type { ApiThread } from "@/lib/types";
+import type { ApiBucket, ApiThread } from "@/lib/types";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+export interface CorrectionResult {
+  id: string;
+  bucketId: string;
+  bucket: string;
+  confidence: number;
+  reason: string;
+}
 
 interface ThreadMessageBody {
   from: string | null;
@@ -123,14 +138,69 @@ function ThreadMessages({ threadId }: { threadId: string }) {
   );
 }
 
+function BucketSelect({
+  thread,
+  buckets,
+  onCorrected,
+}: {
+  thread: ApiThread;
+  buckets: ApiBucket[];
+  onCorrected: (result: CorrectionResult) => void;
+}) {
+  const [pending, setPending] = useState(false);
+
+  const move = async (bucketId: string) => {
+    if (bucketId === thread.bucketId) return;
+    setPending(true);
+    try {
+      const res = await fetch(`/api/threads/${thread.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Move failed (${res.status})`);
+      onCorrected(data);
+      toast.success(
+        `Moved to ${data.bucket} — future sorting will learn from this`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <Select
+      value={thread.bucketId ?? undefined}
+      onValueChange={move}
+      disabled={pending}
+    >
+      <SelectTrigger size="sm" aria-label="Bucket">
+        <SelectValue placeholder="Unsorted" />
+      </SelectTrigger>
+      <SelectContent>
+        {buckets.map((b) => (
+          <SelectItem key={b.id} value={b.id}>
+            {b.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function ThreadViewDialog({
   thread,
-  bucketName,
+  buckets,
   onOpenChange,
+  onCorrected,
 }: {
   thread: ApiThread | null;
-  bucketName: string | null;
+  buckets: ApiBucket[];
   onOpenChange: (open: boolean) => void;
+  onCorrected: (result: CorrectionResult) => void;
 }) {
   return (
     <Dialog open={!!thread} onOpenChange={onOpenChange}>
@@ -145,7 +215,11 @@ export function ThreadViewDialog({
                 <span>{senderName(thread.sender)}</span>
                 <span>·</span>
                 <span>{formatDate(thread.internalDate)}</span>
-                {bucketName && <Badge variant="secondary">{bucketName}</Badge>}
+                <BucketSelect
+                  thread={thread}
+                  buckets={buckets}
+                  onCorrected={onCorrected}
+                />
                 {thread.reason && (
                   <span className="text-xs">— {thread.reason}</span>
                 )}

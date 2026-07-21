@@ -7,6 +7,7 @@ import {
   chunk,
   classifyBatch,
 } from "@/lib/classify";
+import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts } from "@/lib/openai";
 import { toApiBucket } from "@/lib/serialize";
 import { and, asc, eq, ne } from "drizzle-orm";
@@ -93,6 +94,12 @@ export async function DELETE(
   }[] = [];
   if (orphans.length > 0 && remaining.length > 0) {
     try {
+      // Corrections into the deleted bucket no longer point anywhere; the
+      // remaining ones still guide the reassignment.
+      const corrections = await fetchCorrections(
+        userEmail,
+        new Set(orphans.map((t) => t.id)),
+      );
       const limit = pLimit(CLASSIFY_CONCURRENCY);
       const results = (
         await Promise.all(
@@ -107,6 +114,7 @@ export async function DELETE(
                   date: t.internalDate?.toISOString() ?? null,
                 })),
                 criteria,
+                corrections,
               ),
             ),
           ),
@@ -126,6 +134,8 @@ export async function DELETE(
                 confidence: r.confidence,
                 reason: r.reason,
                 classifiedAt: now,
+                // The human placement died with its bucket.
+                correctedAt: null,
               })
               .where(
                 and(eq(threads.id, r.id), eq(threads.userEmail, userEmail)),

@@ -46,6 +46,10 @@ export const threads = pgTable(
     // One short phrase from the classifier; surfaced as a tooltip in the UI.
     reason: text("reason"),
     classifiedAt: timestamp("classified_at", { withTimezone: true }),
+    // Set when the user manually re-files a thread. Human placement is
+    // authoritative: never reclassified, auto-reviewed, or auto-moved, and
+    // recent corrections feed the classification prompt as examples.
+    correctedAt: timestamp("corrected_at", { withTimezone: true }),
     // Hand-assigned bucket name from /label; null if unlabeled. Eval ground truth.
     goldLabel: text("gold_label"),
   },

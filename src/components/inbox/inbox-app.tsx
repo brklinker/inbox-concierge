@@ -362,13 +362,22 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
 
       <ThreadViewDialog
         thread={viewThread}
-        bucketName={
-          viewThread?.bucketId
-            ? (bucketNameById.get(viewThread.bucketId) ?? null)
-            : null
-        }
+        buckets={bucketList}
         onOpenChange={(open) => {
           if (!open) setViewThread(null);
+        }}
+        onCorrected={(result) => {
+          applyResults([result]);
+          setViewThread((prev) =>
+            prev && prev.id === result.id
+              ? {
+                  ...prev,
+                  bucketId: result.bucketId,
+                  confidence: result.confidence,
+                  reason: result.reason,
+                }
+              : prev,
+          );
         }}
       />
 

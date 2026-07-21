@@ -8,6 +8,7 @@ import {
   classifyBatch,
   type ClassifiableThread,
 } from "@/lib/classify";
+import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts, embeddingInput } from "@/lib/openai";
 import { neighborConsensus, topK } from "@/lib/similarity";
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
@@ -52,14 +53,21 @@ export async function POST(req: NextRequest) {
   const bucketById = new Map(bucketRows.map((b) => [b.id, b]));
   const criteria = bucketRows.map((b) => ({ name: b.name, description: b.description }));
 
+  // Human placements are never overwritten, force or not.
   const targetFilter = body.threadIds?.length
     ? and(
         eq(threads.userEmail, userEmail),
         inArray(threads.id, body.threadIds),
+        isNull(threads.correctedAt),
         ...(body.force ? [] : [isNull(threads.classifiedAt)]),
       )
-    : and(eq(threads.userEmail, userEmail), isNull(threads.classifiedAt));
+    : and(
+        eq(threads.userEmail, userEmail),
+        isNull(threads.classifiedAt),
+        isNull(threads.correctedAt),
+      );
   const targets = await db.select().from(threads).where(targetFilter);
+  const corrections = await fetchCorrections(userEmail);
 
   const encoder = new TextEncoder();
   // If the client disconnects mid-run, enqueue() starts throwing. The work
@@ -118,7 +126,7 @@ export async function POST(req: NextRequest) {
                 snippet: t.snippet,
                 date: t.internalDate?.toISOString() ?? null,
               }));
-              const results = await classifyBatch(inputs, criteria);
+              const results = await classifyBatch(inputs, criteria, corrections);
               const now = new Date();
               const writeLimit = pLimit(10);
               const streamed: StreamedResult[] = [];
@@ -170,6 +178,7 @@ export async function POST(req: NextRequest) {
             embedding: threads.embedding,
             bucketId: threads.bucketId,
             confidence: threads.confidence,
+            correctedAt: threads.correctedAt,
             sender: threads.sender,
             subject: threads.subject,
             snippet: threads.snippet,
@@ -193,6 +202,9 @@ export async function POST(req: NextRequest) {
         const flagged: { thread: (typeof pool)[number]; majority: string }[] = [];
         for (const t of pool) {
           if (!targetIds.has(t.id)) continue;
+          // Corrected threads inform their neighbors but are never
+          // second-guessed themselves.
+          if (t.correctedAt) continue;
           if ((t.confidence ?? 1) >= CONSISTENCY_CONFIDENCE) continue;
           const label = bucketById.get(t.bucketId!)?.name;
           if (!label) continue;
@@ -227,7 +239,7 @@ export async function POST(req: NextRequest) {
             note: `Similar threads were mostly classified as "${f.majority}"; this one is currently "${bucketById.get(f.thread.bucketId!)?.name}". Confirm or correct.`,
           }));
           for (const reviewBatch of chunk(reviewInputs, CLASSIFY_BATCH_SIZE)) {
-            const results = await classifyBatch(reviewBatch, criteria);
+            const results = await classifyBatch(reviewBatch, criteria, corrections);
             for (const r of results) {
               const bucket = bucketByName.get(r.bucket.toLowerCase());
               const prev = poolById.get(r.id);
