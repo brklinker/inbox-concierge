@@ -42,6 +42,12 @@ toward Important is a minor annoyance; burying real mail in Auto-Archive is a
 missed job offer. When uncertain, the model is instructed to pick the
 higher-attention bucket.
 
+**Why there's a read view at all** (the brief didn't require one): you can't
+judge a triage system without reading what it triaged — the read view is how
+a silently misfiled thread was caught during development — and re-filing a
+thread is only an informed decision after reading it. It exists to serve the
+correction loop, and it fetches bodies on demand without ever storing them.
+
 **Corrections are a feedback loop.** Re-file a thread from its read view and
 the placement becomes human truth: it is never reclassified, auto-reviewed, or
 auto-moved again, and the most recent corrections ride along in every future
