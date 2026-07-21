@@ -128,3 +128,17 @@ delete any reviewer's data on request.
 npm run eval            # runs the gold set through the live prompt, writes evals/results/
 npm run eval -- --dry   # print only
 ```
+
+## Tests
+
+```bash
+npm test
+```
+
+Two layers of verification, on purpose: the eval measures the *judgment*
+(does the LLM agree with the mailbox owner), while the unit tests pin the
+*machinery* — header/entity decoding, the duplicate-id guards, retry and
+backoff behavior, consistency flagging, candidate selection, token refresh,
+and auth guards on every route. Each decoding and id-guard test corresponds
+to a bug that actually happened during development. CI runs lint,
+typecheck, tests, and build on every push.

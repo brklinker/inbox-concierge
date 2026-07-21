@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { refreshGoogleAccessToken } from "@/lib/refresh-token";
 
 declare module "next-auth" {
   interface Session {
@@ -48,24 +49,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return { ...token, error: "RefreshTokenError" as const };
       }
       try {
-        const response = await fetch("https://oauth2.googleapis.com/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: process.env.AUTH_GOOGLE_ID!,
-            client_secret: process.env.AUTH_GOOGLE_SECRET!,
-            grant_type: "refresh_token",
-            refresh_token: token.refresh_token,
-          }),
-        });
-        const tokens = await response.json();
-        if (!response.ok) throw tokens;
+        const refreshed = await refreshGoogleAccessToken(token.refresh_token);
         return {
           ...token,
-          access_token: tokens.access_token,
-          expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
-          // Google only returns a new refresh_token sometimes; keep the old one otherwise.
-          refresh_token: tokens.refresh_token ?? token.refresh_token,
+          access_token: refreshed.access_token,
+          expires_at: refreshed.expires_at,
+          refresh_token: refreshed.refresh_token ?? token.refresh_token,
           error: undefined,
         };
       } catch {

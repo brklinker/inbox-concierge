@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { buckets, threads } from "@/db/schema";
+import { selectCandidates } from "@/lib/candidates";
 import {
   CLASSIFY_BATCH_SIZE,
   CLASSIFY_CONCURRENCY,
@@ -15,14 +16,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
-
-// Candidate retrieval: top-k threads by similarity to the bucket embedding,
-// plus anything the classifier was unsure about.
-const CANDIDATE_K = 40;
-const CANDIDATE_CONFIDENCE = 0.6;
-// Vague bucket names ("Misc") retrieve nothing meaningful; if even the best
-// match is this weak, fall back to evaluating every thread.
-const SIMILARITY_FLOOR = 0.25;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -70,30 +63,16 @@ export async function POST(req: NextRequest) {
     .where(and(eq(threads.userEmail, userEmail), isNotNull(threads.embedding)));
   const scanned = pool.length;
 
-  // Rank every thread against the bucket embedding (embeddings are unit-norm,
-  // dot product == cosine).
-  const ranked = pool
-    .map((t) => ({
-      thread: t,
-      similarity: t.embedding!.reduce(
-        (sum, v, i) => sum + v * bucketEmbedding[i],
-        0,
-      ),
-    }))
-    .sort((a, b) => b.similarity - a.similarity);
-
-  const weakRetrieval = (ranked[0]?.similarity ?? 0) < SIMILARITY_FLOOR;
-  const candidateIds = new Set<string>();
-  if (weakRetrieval) {
-    for (const r of ranked) candidateIds.add(r.thread.id);
-  } else {
-    for (const r of ranked.slice(0, CANDIDATE_K)) candidateIds.add(r.thread.id);
-    for (const t of pool) {
-      if ((t.confidence ?? 0) < CANDIDATE_CONFIDENCE) candidateIds.add(t.id);
-    }
-  }
-  // Human-placed threads are never auto-moved, even into a brand-new bucket.
-  const candidates = pool.filter((t) => candidateIds.has(t.id) && !t.correctedAt);
+  const { ids: candidateIds, usedFallback: weakRetrieval } = selectCandidates(
+    pool.map((t) => ({
+      id: t.id,
+      embedding: t.embedding!,
+      confidence: t.confidence,
+      corrected: !!t.correctedAt,
+    })),
+    bucketEmbedding,
+  );
+  const candidates = pool.filter((t) => candidateIds.has(t.id));
 
   const bucketNameById = new Map(existing.map((b) => [b.id, b.name]));
   const allCriteria = [...existing, bucket].map((b) => ({

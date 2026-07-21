@@ -8,19 +8,15 @@ import {
   classifyBatch,
   type ClassifiableThread,
 } from "@/lib/classify";
+import { findInconsistent } from "@/lib/consistency";
 import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts, embeddingInput } from "@/lib/openai";
-import { neighborConsensus, topK } from "@/lib/similarity";
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import pLimit from "p-limit";
 import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-const CONSISTENCY_NEIGHBORS = 10;
-const CONSISTENCY_DISAGREEMENT = 0.6;
-const CONSISTENCY_CONFIDENCE = 0.7;
 
 interface StreamedResult {
   id: string;
@@ -192,39 +188,20 @@ export async function POST(req: NextRequest) {
               isNotNull(threads.bucketId),
             ),
           );
-        const poolVectors = pool.map((p) => ({
-          id: p.id,
-          embedding: p.embedding!,
-        }));
         const poolById = new Map(pool.map((p) => [p.id, p]));
         const targetIds = new Set(targets.map((t) => t.id));
-
-        const flagged: { thread: (typeof pool)[number]; majority: string }[] = [];
-        for (const t of pool) {
-          if (!targetIds.has(t.id)) continue;
-          // Corrected threads inform their neighbors but are never
-          // second-guessed themselves.
-          if (t.correctedAt) continue;
-          if ((t.confidence ?? 1) >= CONSISTENCY_CONFIDENCE) continue;
-          const label = bucketById.get(t.bucketId!)?.name;
-          if (!label) continue;
-          const neighbors = topK(
-            t.embedding!,
-            poolVectors,
-            CONSISTENCY_NEIGHBORS,
-            t.id,
-          );
-          const neighborLabels = neighbors
-            .map((n) => {
-              const nb = poolById.get(n.id);
-              return nb?.bucketId ? bucketById.get(nb.bucketId)?.name : undefined;
-            })
-            .filter((l): l is string => !!l);
-          const { majority, disagreement } = neighborConsensus(neighborLabels, label);
-          if (disagreement > CONSISTENCY_DISAGREEMENT && majority && majority !== label) {
-            flagged.push({ thread: t, majority });
-          }
-        }
+        const flagged = findInconsistent(
+          pool.map((p) => ({
+            id: p.id,
+            embedding: p.embedding!,
+            bucketName: p.bucketId
+              ? (bucketById.get(p.bucketId)?.name ?? null)
+              : null,
+            confidence: p.confidence,
+            corrected: !!p.correctedAt,
+          })),
+          targetIds,
+        ).map((f) => ({ thread: poolById.get(f.id)!, majority: f.majority }));
 
         send({ type: "review_start", flagged: flagged.length });
 

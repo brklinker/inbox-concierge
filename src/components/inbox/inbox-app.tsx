@@ -46,6 +46,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [preset, setPreset] = useState<BucketSuggestionItem | null>(null);
   const [viewThread, setViewThread] = useState<ApiThread | null>(null);
   const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
+  const [confirmDeleteData, setConfirmDeleteData] = useState(false);
   const classifyRunning = useRef(false);
   const hasLoaded = useRef(false);
 
@@ -294,6 +295,14 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           <Button size="sm" variant="ghost" onClick={() => signOut()}>
             Sign out
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive"
+            onClick={() => setConfirmDeleteData(true)}
+          >
+            Delete my data
+          </Button>
         </div>
       </header>
 
@@ -443,6 +452,38 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
               onClick={() => confirmDeleteBucket && deleteBucket(confirmDeleteBucket)}
             >
               Delete & re-sort
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDeleteData} onOpenChange={setConfirmDeleteData}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete everything stored for this account?</DialogTitle>
+            <DialogDescription>
+              Removes all cached thread metadata, buckets, gold labels, and
+              corrections from the database, then signs you out. Signing in
+              again starts fresh. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteData(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/me", { method: "DELETE" });
+                  if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+                  await signOut();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
+              Delete & sign out
             </Button>
           </DialogFooter>
         </DialogContent>
