@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { buckets, threads } from "@/db/schema";
 import { seedDefaultBuckets } from "@/lib/default-buckets";
 import { getThreadMetadata, listThreadIds } from "@/lib/gmail";
+import { toApiBucket } from "@/lib/serialize";
 import { asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -91,6 +92,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     threads: threadRows,
-    buckets: bucketRows.map(({ embedding: _, ...b }) => b),
+    buckets: bucketRows.map(toApiBucket),
   });
 }

@@ -90,6 +90,62 @@ export async function classifyBatch(
     }));
 }
 
+export interface BucketFitDecision {
+  id: string;
+  move: boolean;
+  confidence: number;
+  reason: string;
+}
+
+/**
+ * Incremental recategorization for a newly created bucket: candidates only,
+ * binary decision — move to the new bucket, or stay put. Everything else in
+ * the mailbox is untouched.
+ */
+export async function evaluateBucketFit(
+  batch: (ClassifiableThread & { currentBucket: string })[],
+  newBucket: BucketCriteria,
+  allBuckets: BucketCriteria[],
+): Promise<BucketFitDecision[]> {
+  if (batch.length === 0) return [];
+  const schema = z.object({
+    results: z.array(
+      z.object({
+        id: z.string(),
+        move: z.boolean(),
+        confidence: z.number(),
+        reason: z.string(),
+      }),
+    ),
+  });
+  const bucketLines = allBuckets
+    .map((b) => `- ${b.name}: ${b.description ?? "(no description)"}`)
+    .join("\n");
+  const system = `You are an email triage assistant. The user just created a new bucket:
+
+"${newBucket.name}": ${newBucket.description ?? "(no description)"}
+
+Their full bucket list is now:
+${bucketLines}
+
+For each input thread (each includes its current bucket as "currentBucket"), decide whether it belongs in the new bucket ("move": true) or should stay where it is ("move": false). Only move a thread when it fits the new bucket clearly better than its current one — when in doubt, leave it. You see only sender, subject, snippet, and date. confidence is your 0-1 estimate; reason is one short phrase. Return exactly one result per input thread, echoing its id.`;
+  const completion = await openai.chat.completions.parse({
+    model: CLASSIFY_MODEL,
+    temperature: 0,
+    response_format: zodResponseFormat(schema, "bucket_fit"),
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: JSON.stringify(batch) },
+    ],
+  });
+  const parsed = completion.choices[0]?.message.parsed;
+  if (!parsed) throw new Error("Bucket fit returned no parsed output");
+  const inputIds = new Set(batch.map((t) => t.id));
+  return parsed.results
+    .filter((r) => inputIds.has(r.id))
+    .map((r) => ({ ...r, confidence: Math.max(0, Math.min(1, r.confidence)) }));
+}
+
 export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
