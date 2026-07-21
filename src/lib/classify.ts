@@ -206,6 +206,76 @@ For each input thread (each includes its current bucket as "currentBucket"), dec
   return results;
 }
 
+export interface ClusterSample {
+  clusterIndex: number;
+  size: number;
+  examples: { sender: string | null; subject: string | null; snippet: string | null }[];
+}
+
+export interface BucketSuggestion {
+  clusterIndex: number;
+  name: string;
+  description: string;
+}
+
+/**
+ * Bucket discovery: shown embedding-cluster samples from the user's mailbox,
+ * propose only the new buckets genuinely worth having. Clustering is free
+ * (the vectors already exist); the LLM spends judgment once per suggestion
+ * pass, not per thread.
+ */
+export async function suggestBuckets(
+  clusters: ClusterSample[],
+  existingBuckets: BucketCriteria[],
+): Promise<BucketSuggestion[]> {
+  if (clusters.length === 0) return [];
+  const schema = z.object({
+    results: z.array(
+      z.object({
+        clusterIndex: z.number(),
+        propose: z.boolean(),
+        name: z.string(),
+        description: z.string(),
+      }),
+    ),
+  });
+  const bucketLines = existingBuckets
+    .map((b) => `- ${b.name}: ${b.description ?? "(no description)"}`)
+    .join("\n");
+  const system = `You are helping a user organize their email. Their threads were clustered by content similarity; you are shown a sample from each cluster.
+
+Their existing buckets:
+${bucketLines}
+
+For each cluster, decide whether it deserves a NEW bucket ("propose": true) or is already well-served by an existing bucket ("propose": false). Only propose buckets a user would plausibly create themselves: coherent, recognizable themes like "Job Search" or "Travel", never vague ones like "Misc" or restatements of existing buckets. name: at most three words. description: one sentence of classification criteria, written the way the user would describe what belongs there. Return one result per cluster, echoing its clusterIndex.`;
+  const completion = await openai.chat.completions.parse({
+    model: CLASSIFY_MODEL,
+    temperature: 0,
+    response_format: zodResponseFormat(schema, "bucket_suggestions"),
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: JSON.stringify(clusters) },
+    ],
+  });
+  const parsed = completion.choices[0]?.message.parsed;
+  if (!parsed) throw new Error("Bucket suggestion returned no parsed output");
+  const existingNames = new Set(existingBuckets.map((b) => b.name.toLowerCase()));
+  const seen = new Set<string>();
+  return parsed.results
+    .filter((r) => r.propose && r.name.trim())
+    .filter((r) => {
+      const key = r.name.trim().toLowerCase();
+      if (existingNames.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((r) => ({
+      clusterIndex: r.clusterIndex,
+      name: r.name.trim(),
+      description: r.description.trim(),
+    }));
+}
+
 export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));

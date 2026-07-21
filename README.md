@@ -33,6 +33,10 @@ Embeddings do three jobs:
 2. **Incremental recategorization** — creating a bucket embeds its name +
    description, retrieves the top-k similar threads, and sends only those
    candidates to the LLM. Everything else is untouched.
+   **Bucket discovery** rides the same vectors: "Suggest buckets" k-means the
+   existing embeddings locally (free), and the LLM names only the clusters
+   worth having as buckets — the defaults from the brief stay; discovery is
+   an additive layer, and a picked suggestion just prefills normal creation.
 3. **The scaling story** — per-user brute-force cosine works to ~100k threads;
    pgvector HNSW after that; a dedicated vector DB probably never, for this
    workload.

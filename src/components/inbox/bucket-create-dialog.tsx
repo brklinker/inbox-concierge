@@ -27,6 +27,7 @@ export function BucketCreateDialog({
   open,
   onOpenChange,
   editBucket,
+  preset,
   onCreated,
   onRenamed,
 }: {
@@ -34,21 +35,25 @@ export function BucketCreateDialog({
   onOpenChange: (open: boolean) => void;
   /** When set, the dialog renames/redescribes this bucket instead of creating. */
   editBucket: ApiBucket | null;
+  /** Prefill for create mode (e.g. a suggested bucket). */
+  preset?: { name: string; description: string } | null;
   onCreated: (result: BucketCreateResult) => void;
   onRenamed: (bucket: ApiBucket) => void;
 }) {
-  // Initial values come from editBucket; the parent remounts this component
-  // (via a key on editBucket) when switching between create and edit targets.
-  const [name, setName] = useState(editBucket?.name ?? "");
-  const [description, setDescription] = useState(editBucket?.description ?? "");
+  // Initial values come from editBucket/preset; the parent remounts this
+  // component (via key) when switching between create and edit targets.
+  const [name, setName] = useState(editBucket?.name ?? preset?.name ?? "");
+  const [description, setDescription] = useState(
+    editBucket?.description ?? preset?.description ?? "",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BucketCreateResult | null>(null);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      setName(editBucket?.name ?? "");
-      setDescription(editBucket?.description ?? "");
+      setName(editBucket?.name ?? preset?.name ?? "");
+      setDescription(editBucket?.description ?? preset?.description ?? "");
       setError(null);
       setResult(null);
       setPending(false);

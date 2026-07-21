@@ -1,6 +1,7 @@
 "use client";
 
 import { BucketCreateDialog, type BucketCreateResult } from "./bucket-create-dialog";
+import { BucketSuggestDialog, type BucketSuggestionItem } from "./bucket-suggest-dialog";
 import { ALL_TAB, BucketTabs, UNSORTED_TAB } from "./bucket-tabs";
 import { ClassificationProgress, type ClassifyProgress } from "./classification-progress";
 import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicator";
@@ -41,6 +42,8 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [confirmReclassify, setConfirmReclassify] = useState(false);
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
   const [editBucket, setEditBucket] = useState<ApiBucket | null>(null);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [preset, setPreset] = useState<BucketSuggestionItem | null>(null);
   const [viewThread, setViewThread] = useState<ApiThread | null>(null);
   const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
   const classifyRunning = useRef(false);
@@ -303,16 +306,26 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           active={effectiveActive}
           onSelect={setActive}
         />
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            setEditBucket(null);
-            setBucketDialogOpen(true);
-          }}
-        >
-          + New bucket
-        </Button>
+        <span className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSuggestOpen(true)}
+          >
+            Suggest buckets
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setEditBucket(null);
+              setPreset(null);
+              setBucketDialogOpen(true);
+            }}
+          >
+            + New bucket
+          </Button>
+        </span>
       </div>
 
       <div className="flex min-h-6 items-center gap-4">
@@ -383,11 +396,23 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         }}
       />
 
+      <BucketSuggestDialog
+        open={suggestOpen}
+        onOpenChange={setSuggestOpen}
+        onPick={(s) => {
+          setSuggestOpen(false);
+          setEditBucket(null);
+          setPreset(s);
+          setBucketDialogOpen(true);
+        }}
+      />
+
       <BucketCreateDialog
-        key={editBucket?.id ?? "create"}
+        key={editBucket?.id ?? preset?.name ?? "create"}
         open={bucketDialogOpen}
         onOpenChange={setBucketDialogOpen}
         editBucket={editBucket}
+        preset={preset}
         onCreated={handleBucketCreated}
         onRenamed={(bucket) =>
           setBucketList((prev) => prev.map((b) => (b.id === bucket.id ? bucket : b)))
