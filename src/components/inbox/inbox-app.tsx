@@ -6,6 +6,7 @@ import { ALL_TAB, BucketTabs, UNSORTED_TAB } from "./bucket-tabs";
 import { ClassificationProgress, type ClassifyProgress } from "./classification-progress";
 import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicator";
 import { InboxList } from "./inbox-list";
+import { SettingsDialog } from "./settings-dialog";
 import { ThreadViewDialog } from "./thread-view-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +48,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [viewThread, setViewThread] = useState<ApiThread | null>(null);
   const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
   const [confirmDeleteData, setConfirmDeleteData] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const classifyRunning = useRef(false);
   const hasLoaded = useRef(false);
 
@@ -273,35 +275,11 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           <p className="text-xs text-muted-foreground">{userEmail}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={refreshing || isClassifying}
-            onClick={() => {
-              setRefreshing(true);
-              load(true);
-            }}
-          >
-            {refreshing ? "Checking…" : "Check new mail"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={refreshing || isClassifying}
-            onClick={() => setConfirmReclassify(true)}
-          >
-            Re-sort everything
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => signOut()}>
-            Sign out
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-destructive"
-            onClick={() => setConfirmDeleteData(true)}
-          >
-            Delete my data
+          {refreshing && (
+            <span className="text-xs text-muted-foreground">Checking…</span>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
+            Settings
           </Button>
         </div>
       </header>
@@ -340,27 +318,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       <div className="flex min-h-6 items-center gap-4">
         <ClassificationProgress progress={progress} />
         {!isClassifying && <ConsistencyIndicator summary={review} />}
-        {activeBucket && (
-          <span className="flex gap-2 text-xs">
-            <button
-              className="text-muted-foreground underline"
-              onClick={() => {
-                setEditBucket(activeBucket);
-                setBucketDialogOpen(true);
-              }}
-            >
-              {activeBucket.isDefault ? "Edit criteria" : "Edit"}
-            </button>
-            {!activeBucket.isDefault && (
-              <button
-                className="text-destructive underline"
-                onClick={() => setConfirmDeleteBucket(activeBucket)}
-              >
-                Delete
-              </button>
-            )}
-          </span>
-        )}
       </div>
 
       {activeBucket?.description && (
@@ -402,6 +359,38 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
                 }
               : prev,
           );
+        }}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        userEmail={userEmail}
+        buckets={bucketList}
+        counts={counts}
+        mailActionsDisabled={refreshing || isClassifying}
+        onCheckNewMail={() => {
+          setSettingsOpen(false);
+          setRefreshing(true);
+          load(true);
+        }}
+        onResort={() => {
+          setSettingsOpen(false);
+          setConfirmReclassify(true);
+        }}
+        onEditBucket={(b) => {
+          setSettingsOpen(false);
+          setPreset(null);
+          setEditBucket(b);
+          setBucketDialogOpen(true);
+        }}
+        onDeleteBucket={(b) => {
+          setSettingsOpen(false);
+          setConfirmDeleteBucket(b);
+        }}
+        onDeleteData={() => {
+          setSettingsOpen(false);
+          setConfirmDeleteData(true);
         }}
       />
 
