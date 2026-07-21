@@ -81,10 +81,18 @@ export async function classifyBatch(
   });
   const parsed = completion.choices[0]?.message.parsed;
   if (!parsed) throw new Error("Classification returned no parsed output");
-  // Guard against dropped/hallucinated ids: keep only results matching inputs.
+  // Guard against id-echo errors. Ids outside the input set are hallucinated.
+  // An id appearing twice means the model stamped some other thread's verdict
+  // with this id (observed in practice: a Steam promo judged under a Sequoia
+  // thread's id, sending real mail to Auto-Archive) — none of its occurrences
+  // can be trusted, so drop them all and let the retry resend those threads.
   const inputIds = new Set(batch.map((t) => t.id));
+  const idCounts = new Map<string, number>();
+  for (const r of parsed.results) {
+    if (inputIds.has(r.id)) idCounts.set(r.id, (idCounts.get(r.id) ?? 0) + 1);
+  }
   const results = parsed.results
-    .filter((r) => inputIds.has(r.id))
+    .filter((r) => idCounts.get(r.id) === 1)
     .map((r) => ({
       ...r,
       confidence: Math.max(0, Math.min(1, r.confidence)),
