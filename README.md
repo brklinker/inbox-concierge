@@ -14,13 +14,13 @@ stage, expensive judgment stage).
 
 ```mermaid
 flowchart LR
-    A[Gmail API<br/>threads.list + threads.get<br/>metadata only] --> B[(Neon Postgres<br/>+ pgvector)]
-    B --> C[Classifier<br/>gpt-4o-mini, batches of 15<br/>structured outputs, temp 0]
-    B --> D[Embeddings<br/>text-embedding-3-small]
-    C -->|SSE, one event per batch| E[UI: live bucket sorting]
-    D --> F[Consistency check<br/>10-NN disagreement + low confidence<br/>→ one LLM review batch]
+    A["Gmail API<br/>threads.list + threads.get<br/>metadata only"] --> B[("Neon Postgres<br/>+ pgvector")]
+    B --> C["Classifier<br/>gpt-4o-mini, batches of 15<br/>structured outputs, temp 0"]
+    B --> D["Embeddings<br/>text-embedding-3-small"]
+    C -->|"SSE, one event per batch"| E["UI: live bucket sorting"]
+    D --> F["Consistency check<br/>10-NN disagreement + low confidence<br/>→ one LLM review batch"]
     F --> E
-    D --> G[Custom bucket creation<br/>top-k candidates only → LLM<br/>"scanned 200, evaluated 34, moved 12"]
+    D --> G["Custom bucket creation<br/>top-k candidates only → LLM<br/>scanned 200 · evaluated 34 · moved 12"]
     G --> E
 ```
 
