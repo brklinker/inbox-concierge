@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Broadsheet envelope: ink tile, paper letter, press-cyan flap. -->
+  <rect width="32" height="32" rx="5" fill="#201e1d"/>
+  <rect x="5" y="9" width="22" height="15" rx="1.5" fill="#f3f2f2"/>
+  <path d="M6 10.5 16 18l10-7.5" fill="none" stroke="#0088b0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
