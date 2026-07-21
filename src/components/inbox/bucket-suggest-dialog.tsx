@@ -64,24 +64,24 @@ function Suggestions({
     );
   }
   return (
-    <div className="space-y-2">
+    <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
       {suggestions.map((s) => (
         <button
           key={s.name}
-          className="w-full rounded-[2px] border bg-background p-3 text-left hover:bg-accent"
+          className="w-full overflow-hidden rounded-[2px] border bg-background p-3 text-left hover:bg-accent"
           onClick={() => onPick(s)}
         >
-          <span className="text-sm font-medium">
+          <span className="block break-words text-sm font-semibold">
             {s.name}{" "}
             <span className="font-normal text-muted-foreground">
               · ~{s.size} threads
             </span>
           </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
+          <span className="mt-1 block break-words text-xs text-muted-foreground">
             {s.description}
           </span>
           {s.exampleSubjects.length > 0 && (
-            <span className="mt-1 block truncate text-xs text-muted-foreground">
+            <span className="mt-1 block min-w-0 truncate text-xs text-muted-foreground">
               e.g. {s.exampleSubjects.join(" · ")}
             </span>
           )}
