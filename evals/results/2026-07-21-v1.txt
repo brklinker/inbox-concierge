@@ -1,0 +1,61 @@
+Eval — prompt v1 — 2026-07-21T16:27:36.078Z
+Gold set: 57 threads across 1 user(s)
+
+Overall accuracy: 21/57 (36.8%)
+Catastrophic misses (gold Important → Auto-Archive): 0
+
+Per-bucket precision/recall:
+       bucket  precision  recall  gold n
+ Auto-Archive      50.0%   15.8%      19
+     Can Wait      11.1%   20.0%       5
+    Important     100.0%   38.1%      21
+   Newsletter      25.0%  100.0%       1
+Notifications      38.1%   72.7%      11
+   Recruiters       0.0%       —       0
+
+Confusion matrix (rows = gold, cols = predicted):
+               Auto-Archive  Can Wait  Important  Newsletter  Notifications  Recruiters
+ Auto-Archive             3         3          0           2             11           0
+     Can Wait             2         1          0           1              1           0
+    Important             0         3          8           0              1           9
+   Newsletter             0         0          0           1              0           0
+Notifications             1         2          0           0              8           0
+   Recruiters             0         0          0           0              0           0
+
+Misses:
+- [Can Wait → Auto-Archive] Neon <product@email.neon.tech> | You're in. Here's a quick guide to help you get started with Neon | Neon Logo Welcome to Neon You're in. Neon is a serverless Postgres database that
+- [Important → Recruiters] LinkedIn InMail <inmail-hit-reply@linkedin.com> | founding engineer - full ownership - NYC, Bryce you in? | Hey Bryce,I'm working closely with the founders at...
+- [Can Wait → Auto-Archive] Claude Team <no-reply@email.claude.com> | Fable 5 is now part of your plan | Your Max plan now includes Fable 5.
+- [Auto-Archive → Can Wait] Personal account <redacted@gmail.com> | Two purchase orders | 
+- [Important → Recruiters] Recruiter <redacted@hypeline.ai> | Backend engineering role at Hume AI | Hey Bryce, Found your profile and wanted to run something by you. Hume builds em
+- [Auto-Archive → Notifications] American Express <AmericanExpress@welcome.americanexpress.com> | We've received your payment | Thanks for your payment received on Jul 19, 2026 BRYCE C KLINKER Account Ending:
+- [Auto-Archive → Notifications] Vercel <notifications@vercel.com> | New sign-in detected on your Vercel account | New sign-in detected on your Vercel account Hello, brklinker. Your Vercel accoun
+- [Important → Can Wait] Pluto <pluto@mail.talentpluto.com> | Talentpluto - Bryce <> Tenex | Hi Tenex, Connecting you with Bryce, whom I spoke with earlier. Bryce, please bo
+- [Auto-Archive → Can Wait] Event organizer <redacted@gmail.com> | You're Invited: The Maven World Cup Final Watch Party - July 19 | Hi, If you need a place to watch the World Cup Final, join us! We're celebrating
+- [Auto-Archive → Notifications] Atlassian <info@e.atlassian.com> | Upcoming changes to Atlassian's legal terms | Understand what this means for you Hello, We are writing to inform you that we a
+- [Can Wait → Notifications] Enterprise Plus <EnterprisePlus@email.enterprise.com> | Account Update: Bryce, Here's Your Enterprise Plus July eStatement | Your Enterprise Plus points and activity eStatement for July. Enterprise Plus® R
+- [Notifications → Can Wait] Property manager <redacted> | [building address] - LAUNDRY FACILITIES  UPDATE | EMAIL SEND TO RESIDENTS VIA BLIND COPY: NOTICE #2 LAUNDRY FACILITY BASEMENT ACCE
+- [Important → Recruiters] Recruiter <redacted@candidatelabs.com> | market has shifted, start ups you should know about | Hey Bryce I'll keep it short — we work with 140 companies backed by a16z, Sequoi
+- [Important → Recruiters] Recruiter <redacted@hcr.digital> | Bryce, on a scale from 1 to 10, how poachable are you right now? | Quick note on how I actually work. I'm not spraying CVs around. I work with a ha
+- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] PR run failed: Sandbox Deploy/Cleanup - feat(ap): detail-page interactions — receipt deep links, list modals, match-tab style (14eba64) | [work/private-repo] Sandbox Deploy/Cleanup workflow run Sandbox Deploy/Cleanup: So
+- [Auto-Archive → Notifications] Tompkins Square Bagels - 2nd Avenue <orders-no-reply@chownow.com> | Thanks for your order (#305963397)! | Thanks for ordering with us Order #305963397 pickup Location Tompkins Square Bag
+- [Auto-Archive → Notifications] customerservice@therealreal.com | New Login Detected on The RealReal | The RealReal New Arrivals Designers Women Men Sale Consign Stores AUTHENTICATED 
+- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] PR run failed: Sandbox Deploy/Cleanup - feat(ap): Invoice Analysis card + banner states per Figma (c9ce8c4) | [work/private-repo] Sandbox Deploy/Cleanup workflow run Sandbox Deploy/Cleanup: So
+- [Notifications → Can Wait] Property manager <redacted> | [building address] - LAUNDRY FACILITIES - BASEMENT ACCESS | This email is being sent via blind copy: NOTICE LAUNDRY FACILITY BASEMENT ACCESS
+- [Important → Recruiters] Recruiter <redacted@transformerstalent.com> | Founding Engineer — Pre-seed AI Startup (Founders are ex-Palantir/Databricks technical leaders) | NYC | Hi Bryce, Hope you're well! I came across your profile on LinkedIn and am reachi
+- [Auto-Archive → Newsletter] Fubo <stream@newsletters.fubo.tv> | You're missing out 🥲 | But don't worry... we're giving you $90 off to stream all the action live on Fub
+- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: E2E Tests - main (b747eee) | [work/private-repo] E2E Tests workflow run E2E Tests: All jobs have failed Vie
+- [Important → Recruiters] Recruiter <redacted@nuable.io> | Founding Engineer roles — AI companies, NYC/remote | Hi Bryce, I'll leave you be after this — just didn't want radio silence to mean 
+- [Important → Recruiters] LinkedIn InMail <inmail-hit-reply@linkedin.com> | 🚀 Hiring Engineers at a $1.1B Unicorn – Build What’s Next | Hi Bryce,I'm currently recruiting for a fast-growi...
+- [Auto-Archive → Can Wait] Con Edison <ConEdison@email.coned.com> | Tools to Understand—and Lower—Your Energy Bill | Get info you can use now.
+- [Notifications → Auto-Archive] Steam <noreply@steampowered.com> | Holdfast: Nations At War from your Steam wishlist is now on sale! | Steam 1 GAME YOU'VE WISHED FOR IS ON SALE! Holdfast: Nations At War -50% $19.99 
+- [Auto-Archive → Notifications] "OpenTable | Obvio Reservations" <no-reply@opentable.com> | Your reservation confirmation for Obvio | [Reservation confirmed] Thanks for using OpenTable!
+- [Important → Notifications] LinkedIn <messages-noreply@linkedin.com> | The first installment of your LinkedIn data archive is ready! | Your LinkedIn data archive fast file is ready for download.
+- [Important → Can Wait] Family member <redacted@gmail.com> | Re: Benefits | I think the HRA plan will cost you least. On Tue, Jul 21, 2026 at 11:02 AM Bryce
+- [Important → Recruiters] LinkedIn InMail <inmail-hit-reply@linkedin.com> | Exciting opportunity in software engineering | Hey Bryce, did you catch my last message?If you're...
+- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: Unit Tests - gh-readonly-queue/main/pr-2280-764668ebe41ed01b3d4dfebb7308d47f07c164de (45dd453) | [work/private-repo] Unit Tests workflow run Unit Tests: Some jobs were not success
+- [Auto-Archive → Newsletter] YC Co-Founder Matching <no-reply@ycombinator.com> | Top co-founder profile picks for the week | Hi Bryce, Check out this week's top candidate picks for you, based on your prefe
+- [Can Wait → Newsletter] The Bowery Presents <info@events.bowerypresents.com> | Thundercat, Hudson Westbrook, The Linda Lindas, Six Sex, Daily Bread, and more shows on sale this week | plus Zeds Dead, Bob Dylan, WILLIS, Finn Wolfhard, Death Cab for Cutie, Japanese 
+- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: E2E Tests - main (b747eee) | [work/private-repo] E2E Tests workflow run E2E Tests: All jobs have failed Vie
+- [Important → Recruiters] Recruiter <redacted@worthsearch.com> | Akita Health: Founding FE/FS Engineer | Hi Bryce, Following up in case this got lost in your inbox.
+- [Important → Can Wait] Recruiter <redacted@marblehealth.com> | Solve the youth mental health crisis @ Marble Health (Series A, $20M+ Raised) | Hi Bryce, Just following up on the above, did you get a chance to read the 5-yea

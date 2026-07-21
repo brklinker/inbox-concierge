@@ -36,14 +36,14 @@ export async function PATCH(
   const { id } = await params;
   const bucket = await ownedBucket(id, session.user.email);
   if (!bucket) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (bucket.isDefault) {
-    return NextResponse.json({ error: "Default buckets can't be edited" }, { status: 400 });
-  }
   const body = (await req.json().catch(() => ({}))) as {
     name?: string;
     description?: string;
   };
-  const name = body.name?.trim() || bucket.name;
+  // Descriptions are the personalization lever (they ARE the classification
+  // criteria), so they're editable on every bucket. Names of defaults stay
+  // fixed — the eval gold labels and seeded semantics hang off them.
+  const name = bucket.isDefault ? bucket.name : (body.name?.trim() || bucket.name);
   const description = body.description?.trim() ?? bucket.description;
   const [embedding] = await embedTexts([`${name}. ${description ?? ""}`.trim()]);
   const [updated] = await db

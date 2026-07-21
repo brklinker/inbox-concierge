@@ -125,7 +125,8 @@ export function BucketCreateDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Job Applications"
-                autoFocus
+                disabled={!!editBucket?.isDefault}
+                autoFocus={!editBucket?.isDefault}
               />
             </div>
             <div className="space-y-2">

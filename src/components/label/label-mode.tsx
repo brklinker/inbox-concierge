@@ -37,11 +37,11 @@ export function LabelMode() {
         toast.error(data.error ?? "Failed to load threads");
         return;
       }
-      // Random order so the gold set isn't all recent mail.
+      // Random order so the gold set isn't all recent mail. All buckets get
+      // a key, custom ones included — gold labels must be able to say
+      // "Recruiters", or the eval grades correct predictions as misses.
       setThreads(shuffle(data.threads as LabeledThread[]));
-      setBuckets(
-        (data.buckets as ApiBucket[]).filter((b) => b.isDefault),
-      );
+      setBuckets((data.buckets as ApiBucket[]).slice(0, 9));
     })();
   }, []);
 

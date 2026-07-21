@@ -318,7 +318,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       <div className="flex min-h-6 items-center gap-4">
         <ClassificationProgress progress={progress} />
         {!isClassifying && <ConsistencyIndicator summary={review} />}
-        {activeBucket && !activeBucket.isDefault && (
+        {activeBucket && (
           <span className="flex gap-2 text-xs">
             <button
               className="text-muted-foreground underline"
@@ -327,14 +327,16 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
                 setBucketDialogOpen(true);
               }}
             >
-              Edit
+              {activeBucket.isDefault ? "Edit criteria" : "Edit"}
             </button>
-            <button
-              className="text-destructive underline"
-              onClick={() => setConfirmDeleteBucket(activeBucket)}
-            >
-              Delete
-            </button>
+            {!activeBucket.isDefault && (
+              <button
+                className="text-destructive underline"
+                onClick={() => setConfirmDeleteBucket(activeBucket)}
+              >
+                Delete
+              </button>
+            )}
           </span>
         )}
       </div>
