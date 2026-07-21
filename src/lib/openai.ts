@@ -12,7 +12,7 @@ export const openai = new Proxy({} as OpenAI, {
 });
 
 export const CLASSIFY_MODEL = process.env.OPENAI_CLASSIFY_MODEL ?? "gpt-4o-mini";
-export const EMBEDDING_MODEL = "text-embedding-3-small";
+const EMBEDDING_MODEL = "text-embedding-3-small";
 
 /** Text embedded for a thread: subject | sender domain | snippet, truncated. */
 export function embeddingInput(t: {

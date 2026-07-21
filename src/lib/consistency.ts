@@ -13,9 +13,9 @@ export interface ConsistencyFlag {
   majority: string;
 }
 
-export const CONSISTENCY_NEIGHBORS = 10;
-export const CONSISTENCY_DISAGREEMENT = 0.6;
-export const CONSISTENCY_CONFIDENCE = 0.7;
+const CONSISTENCY_NEIGHBORS = 10;
+const CONSISTENCY_DISAGREEMENT = 0.6;
+const CONSISTENCY_CONFIDENCE = 0.7;
 
 /**
  * Flag threads whose nearest neighbors mostly carry a different label and

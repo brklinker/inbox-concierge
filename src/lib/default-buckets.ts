@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 // Descriptions do double duty: they are the LLM's classification criteria and
 // (for custom buckets) the embedding source, so they're written as decision
 // rules, not marketing copy.
-export const DEFAULT_BUCKETS = [
+const DEFAULT_BUCKETS = [
   {
     name: "Important",
     description:

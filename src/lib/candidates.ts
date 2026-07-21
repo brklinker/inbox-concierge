@@ -9,11 +9,11 @@ export interface CandidateThread {
 
 // Candidate retrieval: top-k threads by similarity to the bucket embedding,
 // plus anything the classifier was unsure about.
-export const CANDIDATE_K = 40;
-export const CANDIDATE_CONFIDENCE = 0.6;
+const CANDIDATE_K = 40;
+const CANDIDATE_CONFIDENCE = 0.6;
 // Vague bucket names ("Misc") retrieve nothing meaningful; if even the best
 // match is this weak, fall back to evaluating every thread.
-export const SIMILARITY_FLOOR = 0.25;
+const SIMILARITY_FLOOR = 0.25;
 
 export interface CandidateSelection {
   ids: Set<string>;
