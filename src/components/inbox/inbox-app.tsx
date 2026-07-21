@@ -147,7 +147,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         setRefreshing(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [classify],
   );
 
@@ -155,8 +154,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
     // Mount-time fetch; all setState happens after the awaited response.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   const reclassifyAll = async () => {
     setConfirmReclassify(false);
@@ -354,6 +352,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       </div>
 
       <BucketCreateDialog
+        key={editBucket?.id ?? "create"}
         open={bucketDialogOpen}
         onOpenChange={setBucketDialogOpen}
         editBucket={editBucket}

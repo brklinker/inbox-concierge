@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApiBucket } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface BucketCreateResult {
   bucket: ApiBucket;
@@ -37,31 +37,22 @@ export function BucketCreateDialog({
   onCreated: (result: BucketCreateResult) => void;
   onRenamed: (bucket: ApiBucket) => void;
 }) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  // Initial values come from editBucket; the parent remounts this component
+  // (via a key on editBucket) when switching between create and edit targets.
+  const [name, setName] = useState(editBucket?.name ?? "");
+  const [description, setDescription] = useState(editBucket?.description ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BucketCreateResult | null>(null);
 
-  const reset = () => {
-    setName("");
-    setDescription("");
-    setError(null);
-    setResult(null);
-    setPending(false);
-  };
-
-  // The parent opens the dialog programmatically, so seed edit fields on open
-  // here rather than in onOpenChange (which only fires on user interaction).
-  useEffect(() => {
-    if (open && editBucket) {
-      setName(editBucket.name);
-      setDescription(editBucket.description ?? "");
-    }
-  }, [open, editBucket]);
-
   const handleOpenChange = (next: boolean) => {
-    if (!next) reset();
+    if (!next) {
+      setName(editBucket?.name ?? "");
+      setDescription(editBucket?.description ?? "");
+      setError(null);
+      setResult(null);
+      setPending(false);
+    }
     onOpenChange(next);
   };
 
