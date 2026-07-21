@@ -60,7 +60,13 @@ seeing model output, which is exactly the anchoring the gold set must avoid.
 `npm run eval` runs the production classification code path against a
 hand-labeled gold set (threads labeled at the hidden `/label` route,
 keyboard-first, in random order) and prints overall accuracy, per-bucket
-precision/recall, a confusion matrix, and every miss. Catastrophic misses
+precision/recall, a confusion matrix, and every miss.
+
+`/label` is developer instrumentation, not a user flow — real users label
+implicitly by re-filing threads (corrections), which is abundant but biased:
+it's anchored on model output and only covers errors the user noticed. The
+blind gold set exists to measure the errors nobody notices, which includes
+the catastrophic ones. Catastrophic misses
 (gold-Important predicted Auto-Archive) are tracked as their own number with a
 target of zero. Prompt iterations are recorded in `evals/NOTES.md` with raw
 results committed under `evals/results/`.
