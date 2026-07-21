@@ -47,7 +47,11 @@ export function ThreadRow({
       onKeyDown={(e) => {
         if (e.key === "Enter") onOpen(thread);
       }}
-      className={`grid cursor-pointer grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${sorted ? "anim-arrive" : ""}`}
+      className={`grid cursor-pointer grid-cols-[34px_186px_minmax(0,1fr)_auto] items-center gap-4 border-b border-ink/8 px-2.5 py-3 hover:bg-ink/[0.035] max-md:grid-cols-[34px_minmax(0,1fr)_auto] ${sorted ? "anim-arrive" : ""} ${
+        // The arrive animation leaves each row as its own stacking context,
+        // so an open menu must lift its whole row above later siblings.
+        menuOpen ? "relative z-[70]" : ""
+      }`}
     >
       <div className="grid size-8 place-items-center rounded-full bg-neutral-200 text-sm font-semibold text-press-800">
         {initial}
@@ -83,7 +87,7 @@ export function ThreadRow({
         {sorted && bucketName && badgeClass && (
           <button
             aria-haspopup="menu"
-            title="Move to another bucket"
+            aria-label={`In ${bucketName} — move to another bucket`}
             onClick={(e) => {
               e.stopPropagation();
               setMenuOpen((o) => !o);
