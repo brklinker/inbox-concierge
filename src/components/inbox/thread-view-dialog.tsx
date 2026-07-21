@@ -204,11 +204,11 @@ export function ThreadViewDialog({
 }) {
   return (
     <Dialog open={!!thread} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="bg-surface sm:max-w-3xl sm:rounded-lg">
         {thread && (
           <>
             <DialogHeader>
-              <DialogTitle className="pr-6 text-left">
+              <DialogTitle className="pr-6 text-left text-xl leading-snug">
                 {thread.subject || "(no subject)"}
               </DialogTitle>
               <DialogDescription className="flex flex-wrap items-center gap-2 text-left">

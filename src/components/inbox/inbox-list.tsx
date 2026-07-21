@@ -1,27 +1,32 @@
 "use client";
 
 import type { ApiThread } from "@/lib/types";
-import { ThreadRow } from "./thread-row";
+import { ThreadRow, type MoveTarget } from "./thread-row";
 
 export function InboxList({
   threads,
   bucketNameById,
-  showBucket,
+  badgeClassById,
+  moveTargets,
   isClassifying,
   emptyMessage,
   onOpen,
+  onMove,
 }: {
   threads: ApiThread[];
   bucketNameById: Map<string, string>;
-  showBucket: boolean;
+  badgeClassById: Map<string, string>;
+  moveTargets: MoveTarget[];
   isClassifying: boolean;
   emptyMessage: string;
   onOpen: (thread: ApiThread) => void;
+  onMove: (thread: ApiThread, bucketId: string) => void;
 }) {
   if (threads.length === 0) {
     return (
-      <div className="px-3 py-12 text-center text-sm text-muted-foreground">
-        {emptyMessage}
+      <div className="px-2.5 py-16 text-center">
+        <div className="text-xl font-semibold">Nothing here yet</div>
+        <p className="mt-1 text-sm text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }
@@ -32,9 +37,11 @@ export function InboxList({
           key={t.id}
           thread={t}
           bucketName={t.bucketId ? (bucketNameById.get(t.bucketId) ?? null) : null}
-          showBucket={showBucket}
+          badgeClass={t.bucketId ? (badgeClassById.get(t.bucketId) ?? null) : null}
           isClassifying={isClassifying}
+          moveTargets={moveTargets}
           onOpen={onOpen}
+          onMove={onMove}
         />
       ))}
     </div>

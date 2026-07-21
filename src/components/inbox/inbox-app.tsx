@@ -1,11 +1,12 @@
 "use client";
 
-import { BucketCreateDialog, type BucketCreateResult } from "./bucket-create-dialog";
+import { BucketCreateDialog } from "./bucket-create-dialog";
+import { BucketScanRibbon, type ScanState } from "./bucket-scan-ribbon";
 import { BucketSuggestDialog, type BucketSuggestionItem } from "./bucket-suggest-dialog";
-import { ALL_TAB, BucketTabs, UNSORTED_TAB } from "./bucket-tabs";
 import { ClassificationProgress, type ClassifyProgress } from "./classification-progress";
 import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicator";
 import { InboxList } from "./inbox-list";
+import { ALL_TAB, SectionsNav, UNSORTED_TAB } from "./sections-nav";
 import { SettingsDialog } from "./settings-dialog";
 import { ThreadViewDialog } from "./thread-view-dialog";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { bucketTone } from "@/lib/bucket-tones";
 import { readSSE } from "@/lib/sse-client";
 import type { ApiBucket, ApiThread, ClassifyEvent } from "@/lib/types";
 import { signOut } from "next-auth/react";
@@ -32,12 +34,64 @@ const IDLE_PROGRESS: ClassifyProgress = {
   flagged: 0,
 };
 
+function Masthead({
+  userEmail,
+  onSettings,
+}: {
+  userEmail?: string;
+  onSettings?: () => void;
+}) {
+  return (
+    <>
+      <header className="flex items-end gap-4 border-b-[3px] border-ink pb-2 pt-6">
+        <div className="mr-auto">
+          <p className="kicker text-press-700">
+            A calmer inbox · sorted for you, live
+          </p>
+          <h1 className="mt-0.5 text-[44px] font-semibold leading-none tracking-tight">
+            Inbox Concierge
+          </h1>
+        </div>
+        {userEmail && (
+          <span className="pb-1.5 text-[13px] text-muted-foreground max-md:hidden">
+            {userEmail}
+          </span>
+        )}
+        {onSettings && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mb-1 rounded-[2px]"
+            onClick={onSettings}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9L19 19M19 5l-2.1 2.1M7.1 16.9L5 19" />
+            </svg>
+            Settings
+          </Button>
+        )}
+      </header>
+      <div className="mt-px h-px bg-ink" />
+    </>
+  );
+}
+
 export function InboxApp({ userEmail }: { userEmail: string }) {
   const [threads, setThreads] = useState<Map<string, ApiThread> | null>(null);
   const [bucketList, setBucketList] = useState<ApiBucket[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ClassifyProgress>(IDLE_PROGRESS);
   const [review, setReview] = useState<ReviewSummary | null>(null);
+  const [reviewDismissed, setReviewDismissed] = useState(false);
+  const [scan, setScan] = useState<ScanState | null>(null);
   const [active, setActive] = useState<string>(ALL_TAB);
   const [refreshing, setRefreshing] = useState(false);
   const [confirmReclassify, setConfirmReclassify] = useState(false);
@@ -80,6 +134,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       if (classifyRunning.current || threadIds.length === 0) return;
       classifyRunning.current = true;
       setReview(null);
+      setReviewDismissed(false);
       setProgress({ ...IDLE_PROGRESS, phase: "classifying", total: threadIds.length });
       try {
         const res = await fetch("/api/classify", {
@@ -168,29 +223,55 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const reclassifyAll = async () => {
     setConfirmReclassify(false);
     setRefreshing(true);
+    setScan(null);
     const fresh = await load(true);
     if (fresh) classify(fresh.map((t) => t.id), true);
   };
 
-  const handleBucketCreated = (result: BucketCreateResult) => {
-    setBucketList((prev) => [...prev, result.bucket]);
-    setThreads((prev) => {
-      if (!prev) return prev;
-      const next = new Map(prev);
-      for (const m of result.moved) {
-        const t = next.get(m.id);
-        if (t) {
-          next.set(m.id, {
-            ...t,
-            bucketId: m.bucketId,
-            confidence: m.confidence,
-            reason: m.reason,
-          });
-        }
-      }
-      return next;
-    });
-    setActive(result.bucket.id);
+  const createBucket = async (name: string, description: string) => {
+    setBucketDialogOpen(false);
+    setPreset(null);
+    setScan({ phase: "scanning", name });
+    try {
+      const res = await fetch("/api/buckets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Create failed (${res.status})`);
+      setBucketList((prev) => [...prev, data.bucket]);
+      applyResults(data.moved);
+      setActive(data.bucket.id);
+      setScan({
+        phase: "done",
+        name: data.bucket.name,
+        scanned: data.scanned,
+        evaluated: data.evaluated,
+        moved: data.moved.length,
+        usedFallback: data.usedFallback,
+      });
+    } catch (e) {
+      setScan(null);
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const saveBucket = async (bucket: ApiBucket, name: string, description: string) => {
+    setBucketDialogOpen(false);
+    try {
+      const res = await fetch(`/api/buckets/${bucket.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Save failed (${res.status})`);
+      setBucketList((prev) => prev.map((b) => (b.id === data.bucket.id ? data.bucket : b)));
+      toast.success(`Updated "${data.bucket.name}".`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const deleteBucket = async (bucket: ApiBucket) => {
@@ -203,7 +284,25 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       if (active === bucket.id) setActive(ALL_TAB);
       applyResults(data.reassigned ?? []);
       toast.success(
-        `Deleted "${bucket.name}" — ${data.reassigned.length} threads re-sorted`,
+        `Deleted "${bucket.name}" — ${data.reassigned.length} threads re-sorted.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const moveThread = async (thread: ApiThread, bucketId: string) => {
+    try {
+      const res = await fetch(`/api/threads/${thread.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucketId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Move failed (${res.status})`);
+      applyResults([data]);
+      toast.success(
+        `Moved to ${data.bucket} — future sorting will learn from this correction.`,
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -212,20 +311,25 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
 
   if (loadError) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4 px-4 py-16 text-center">
-        <p className="text-sm text-destructive">Couldn&apos;t load your inbox: {loadError}</p>
-        <div className="flex justify-center gap-2">
-          <Button
-            onClick={() => {
-              setLoadError(null);
-              load(false);
-            }}
-          >
-            Retry
-          </Button>
-          <Button variant="outline" onClick={() => signOut()}>
-            Sign out
-          </Button>
+      <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
+        <Masthead />
+        <div className="ribbon mt-8" style={{ borderTopColor: "var(--press2)" }}>
+          <div className="text-lg font-semibold">Couldn&apos;t load your inbox</div>
+          <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+          <div className="mt-4 flex gap-2">
+            <Button
+              className="rounded-[2px]"
+              onClick={() => {
+                setLoadError(null);
+                load(false);
+              }}
+            >
+              Retry
+            </Button>
+            <Button variant="outline" className="rounded-[2px]" onClick={() => signOut()}>
+              Sign out
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -233,12 +337,21 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
 
   if (threads === null) {
     return (
-      <div className="mx-auto max-w-5xl space-y-3 px-4 py-8">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-8 w-full" />
-        {Array.from({ length: 10 }, (_, i) => (
-          <Skeleton key={i} className="h-9 w-full" />
-        ))}
+      <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
+        <Masthead userEmail={userEmail} />
+        <div className="mt-8 flex gap-10">
+          <div className="w-[236px] flex-none space-y-2 max-lg:hidden">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-9 w-full rounded-[2px]" />
+            ))}
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <Skeleton className="h-8 w-56 rounded-[2px]" />
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-[2px]" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -252,9 +365,46 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
     if (t.bucketId) counts.set(t.bucketId, (counts.get(t.bucketId) ?? 0) + 1);
     else unsortedCount += 1;
   }
+  const tones = bucketList.map((b, i) => ({ bucket: b, tone: bucketTone(b.name, i) }));
   const bucketNameById = new Map(bucketList.map((b) => [b.id, b.name]));
-  // The Unsorted tab disappears once everything is classified; don't leave
-  // the user staring at its empty filter.
+  const badgeClassById = new Map(tones.map(({ bucket, tone }) => [bucket.id, tone.badgeClass]));
+  const moveTargets = tones.map(({ bucket, tone }) => ({
+    id: bucket.id,
+    name: bucket.name,
+    dot: tone.dot,
+  }));
+
+  const sections = [
+    {
+      id: ALL_TAB,
+      name: "All threads",
+      dot: "var(--ink)",
+      count: allThreads.length,
+      manageable: false,
+    },
+    ...tones.map(({ bucket, tone }) => ({
+      id: bucket.id,
+      name: bucket.name,
+      dot: tone.dot,
+      count: counts.get(bucket.id) ?? 0,
+      manageable: true,
+      bucket,
+    })),
+    ...(unsortedCount > 0
+      ? [
+          {
+            id: UNSORTED_TAB,
+            name: "Unsorted",
+            dot: "var(--color-neutral-400)",
+            count: unsortedCount,
+            manageable: false,
+          },
+        ]
+      : []),
+  ];
+
+  // The Unsorted section disappears once everything is classified; don't
+  // leave the user staring at its empty filter.
   const effectiveActive =
     active === UNSORTED_TAB && unsortedCount === 0 ? ALL_TAB : active;
   const visible =
@@ -264,81 +414,109 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         ? allThreads.filter((t) => !t.bucketId)
         : allThreads.filter((t) => t.bucketId === effectiveActive);
   const activeBucket = bucketList.find((b) => b.id === effectiveActive) ?? null;
+  const activeName =
+    effectiveActive === ALL_TAB
+      ? "All threads"
+      : effectiveActive === UNSORTED_TAB
+        ? "Unsorted"
+        : (activeBucket?.name ?? "All threads");
   const isClassifying =
     progress.phase === "classifying" || progress.phase === "reviewing";
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 px-4 py-8">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Inbox Concierge</h1>
-          <p className="text-xs text-muted-foreground">{userEmail}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {refreshing && (
-            <span className="text-xs text-muted-foreground">Checking…</span>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
-            Settings
-          </Button>
-        </div>
-      </header>
+    <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
+      <Masthead userEmail={userEmail} onSettings={() => setSettingsOpen(true)} />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <BucketTabs
-          buckets={bucketList}
-          counts={counts}
-          unsortedCount={unsortedCount}
-          totalCount={allThreads.length}
+      <div className="mt-8 flex items-start gap-10 max-lg:flex-col max-lg:gap-6">
+        <SectionsNav
+          items={sections}
           active={effectiveActive}
           onSelect={setActive}
+          onEdit={(b) => {
+            setPreset(null);
+            setEditBucket(b);
+            setBucketDialogOpen(true);
+          }}
+          onDelete={(b) => setConfirmDeleteBucket(b)}
         />
-        <span className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSuggestOpen(true)}
-          >
-            Suggest buckets
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setEditBucket(null);
-              setPreset(null);
-              setBucketDialogOpen(true);
-            }}
-          >
-            + New bucket
-          </Button>
-        </span>
-      </div>
 
-      <div className="flex min-h-6 items-center gap-4">
-        <ClassificationProgress progress={progress} />
-        {!isClassifying && <ConsistencyIndicator summary={review} />}
-      </div>
+        <main className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-4 pb-4">
+            <h2 className="text-[26px] font-semibold leading-tight">{activeName}</h2>
+            <span className="text-sm text-muted-foreground">
+              {visible.length} thread{visible.length === 1 ? "" : "s"}
+            </span>
+            <div className="ml-auto flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-[2px] text-press"
+                onClick={() => setSuggestOpen(true)}
+              >
+                Suggest
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-[2px]"
+                onClick={() => {
+                  setEditBucket(null);
+                  setPreset(null);
+                  setBucketDialogOpen(true);
+                }}
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New bucket
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-[2px]"
+                disabled={refreshing || isClassifying}
+                onClick={() => {
+                  setRefreshing(true);
+                  load(true);
+                }}
+              >
+                {isClassifying ? "Sorting…" : refreshing ? "Checking…" : "Check new mail"}
+              </Button>
+            </div>
+          </div>
 
-      {activeBucket?.description && (
-        <p className="text-xs text-muted-foreground">{activeBucket.description}</p>
-      )}
+          <BucketScanRibbon scan={scan} onDismiss={() => setScan(null)} />
+          <ClassificationProgress progress={progress} />
+          {!isClassifying && !scan && !reviewDismissed && (
+            <ConsistencyIndicator
+              summary={review}
+              onDismiss={() => setReviewDismissed(true)}
+            />
+          )}
 
-      <div className="rounded-md border">
-        <InboxList
-          threads={visible}
-          bucketNameById={bucketNameById}
-          showBucket={effectiveActive === ALL_TAB || effectiveActive === UNSORTED_TAB}
-          isClassifying={isClassifying}
-          onOpen={setViewThread}
-          emptyMessage={
-            effectiveActive === ALL_TAB
-              ? "No threads in your inbox."
-              : isClassifying
-                ? "Nothing here yet — still sorting."
-                : "No threads in this bucket."
-          }
-        />
+          <InboxList
+            threads={visible}
+            bucketNameById={bucketNameById}
+            badgeClassById={badgeClassById}
+            moveTargets={moveTargets}
+            isClassifying={isClassifying}
+            onOpen={setViewThread}
+            onMove={moveThread}
+            emptyMessage={
+              effectiveActive === ALL_TAB
+                ? "No threads in your inbox."
+                : isClassifying
+                  ? "Still sorting — threads land here as they're filed."
+                  : "No threads matched this bucket in the last run."
+            }
+          />
+        </main>
       </div>
 
       <ThreadViewDialog
@@ -366,8 +544,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         userEmail={userEmail}
-        buckets={bucketList}
-        counts={counts}
         mailActionsDisabled={refreshing || isClassifying}
         onCheckNewMail={() => {
           setSettingsOpen(false);
@@ -377,16 +553,6 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         onResort={() => {
           setSettingsOpen(false);
           setConfirmReclassify(true);
-        }}
-        onEditBucket={(b) => {
-          setSettingsOpen(false);
-          setPreset(null);
-          setEditBucket(b);
-          setBucketDialogOpen(true);
-        }}
-        onDeleteBucket={(b) => {
-          setSettingsOpen(false);
-          setConfirmDeleteBucket(b);
         }}
         onDeleteData={() => {
           setSettingsOpen(false);
@@ -411,10 +577,10 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
         onOpenChange={setBucketDialogOpen}
         editBucket={editBucket}
         preset={preset}
-        onCreated={handleBucketCreated}
-        onRenamed={(bucket) =>
-          setBucketList((prev) => prev.map((b) => (b.id === bucket.id ? bucket : b)))
-        }
+        onSubmit={(name, description) => {
+          if (editBucket) saveBucket(editBucket, name, description);
+          else createBucket(name, description);
+        }}
       />
 
       <Dialog
@@ -423,9 +589,11 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           if (!open) setConfirmDeleteBucket(null);
         }}
       >
-        <DialogContent>
+        <DialogContent className="bg-surface sm:rounded-lg">
           <DialogHeader>
-            <DialogTitle>Delete &quot;{confirmDeleteBucket?.name}&quot;?</DialogTitle>
+            <DialogTitle className="text-xl">
+              Delete &quot;{confirmDeleteBucket?.name}&quot;?
+            </DialogTitle>
             <DialogDescription>
               Its {confirmDeleteBucket ? (counts.get(confirmDeleteBucket.id) ?? 0) : 0}{" "}
               threads will be re-sorted into your remaining buckets. This can&apos;t
@@ -433,11 +601,16 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeleteBucket(null)}>
+            <Button
+              variant="outline"
+              className="rounded-[2px]"
+              onClick={() => setConfirmDeleteBucket(null)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="rounded-[2px]"
               onClick={() => confirmDeleteBucket && deleteBucket(confirmDeleteBucket)}
             >
               Delete & re-sort
@@ -447,9 +620,11 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       </Dialog>
 
       <Dialog open={confirmDeleteData} onOpenChange={setConfirmDeleteData}>
-        <DialogContent>
+        <DialogContent className="bg-surface sm:rounded-lg">
           <DialogHeader>
-            <DialogTitle>Delete everything stored for this account?</DialogTitle>
+            <DialogTitle className="text-xl">
+              Delete everything stored for this account?
+            </DialogTitle>
             <DialogDescription>
               Removes all cached thread metadata, buckets, gold labels, and
               corrections from the database, then signs you out. Signing in
@@ -457,11 +632,16 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeleteData(false)}>
+            <Button
+              variant="outline"
+              className="rounded-[2px]"
+              onClick={() => setConfirmDeleteData(false)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="rounded-[2px]"
               onClick={async () => {
                 try {
                   const res = await fetch("/api/me", { method: "DELETE" });
@@ -479,20 +659,26 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       </Dialog>
 
       <Dialog open={confirmReclassify} onOpenChange={setConfirmReclassify}>
-        <DialogContent>
+        <DialogContent className="bg-surface sm:rounded-lg">
           <DialogHeader>
-            <DialogTitle>Re-sort everything?</DialogTitle>
+            <DialogTitle className="text-xl">Re-sort everything?</DialogTitle>
             <DialogDescription>
               This refetches your inbox and reclassifies all {allThreads.length}{" "}
-              threads from scratch. It takes about half a minute and costs real
-              LLM calls — usually only needed after changing buckets.
+              threads from scratch. Takes about half a minute and costs real LLM
+              calls. Threads you&apos;ve re-filed yourself stay put.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmReclassify(false)}>
+            <Button
+              variant="outline"
+              className="rounded-[2px]"
+              onClick={() => setConfirmReclassify(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={reclassifyAll}>Re-sort</Button>
+            <Button className="rounded-[2px]" onClick={reclassifyAll}>
+              Re-sort
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

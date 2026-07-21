@@ -7,32 +7,44 @@ export default async function Home() {
 
   if (!session?.user?.email || session.error) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-24 text-center">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Inbox Concierge</h1>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Sign in with Google and your last 200 inbox threads get sorted into
-            buckets — Important, Can Wait, Newsletter, Notifications,
-            Auto-Archive — plus any bucket you define in plain English.
+      <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col justify-center px-6 py-16">
+        <div className="border-b-[3px] border-ink pb-3">
+          <p className="kicker text-press-700">
+            A calmer inbox · sorted for you, live
           </p>
-          {session?.error && (
-            <p className="text-sm text-destructive">
-              Your session expired — please sign in again.
-            </p>
-          )}
+          <h1 className="mt-1 text-5xl font-semibold tracking-tight">
+            Inbox Concierge
+          </h1>
         </div>
+        <div className="mt-px h-px bg-ink" />
+        <p className="mt-8 max-w-[52ch] text-[17px] leading-relaxed">
+          Sign in with Google and your last 200 inbox threads file themselves
+          into buckets — Important, Can Wait, Newsletter, Notifications,
+          Auto-Archive — plus any bucket you describe in plain English. The
+          concierge sorts live, checks its own work for consistency, and
+          learns every time you re-file something.
+        </p>
+        {session?.error && (
+          <p className="mt-4 text-sm text-destructive">
+            Your session expired — please sign in again.
+          </p>
+        )}
         <form
+          className="mt-8"
           action={async () => {
             "use server";
             await signIn("google");
           }}
         >
-          <Button type="submit">Sign in with Google</Button>
+          <Button type="submit" size="lg" className="rounded-[2px] text-[15px]">
+            Sign in with Google
+          </Button>
         </form>
-        <p className="max-w-md text-xs text-muted-foreground">
+        <p className="mt-6 max-w-[54ch] text-[13px] text-muted-foreground">
           Read-only Gmail access. Classification sees only subjects, senders,
           and preview snippets — full bodies are fetched just-in-time when you
-          open a thread, and never stored.
+          open a thread, and never stored. Delete everything with one click,
+          any time.
         </p>
       </main>
     );

@@ -15,30 +15,21 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ApiBucket } from "@/lib/types";
 import { useState } from "react";
 
-export interface BucketCreateResult {
-  bucket: ApiBucket;
-  scanned: number;
-  evaluated: number;
-  usedFallback: boolean;
-  moved: { id: string; bucketId: string; confidence: number; reason: string }[];
-}
-
 export function BucketCreateDialog({
   open,
   onOpenChange,
   editBucket,
   preset,
-  onCreated,
-  onRenamed,
+  onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** When set, the dialog renames/redescribes this bucket instead of creating. */
+  /** When set, the dialog edits this bucket instead of creating. */
   editBucket: ApiBucket | null;
   /** Prefill for create mode (e.g. a suggested bucket). */
   preset?: { name: string; description: string } | null;
-  onCreated: (result: BucketCreateResult) => void;
-  onRenamed: (bucket: ApiBucket) => void;
+  /** The parent owns the request; the dialog is a controlled form. */
+  onSubmit: (name: string, description: string) => void;
 }) {
   // Initial values come from editBucket/preset; the parent remounts this
   // component (via key) when switching between create and edit targets.
@@ -46,117 +37,75 @@ export function BucketCreateDialog({
   const [description, setDescription] = useState(
     editBucket?.description ?? preset?.description ?? "",
   );
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<BucketCreateResult | null>(null);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setName(editBucket?.name ?? preset?.name ?? "");
       setDescription(editBucket?.description ?? preset?.description ?? "");
-      setError(null);
-      setResult(null);
-      setPending(false);
     }
     onOpenChange(next);
   };
 
-  const submit = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        editBucket ? `/api/buckets/${editBucket.id}` : "/api/buckets",
-        {
-          method: editBucket ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description }),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
-      if (editBucket) {
-        onRenamed(data.bucket);
-        handleOpenChange(false);
-      } else {
-        setResult(data);
-        onCreated(data);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setPending(false);
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="bg-surface sm:rounded-lg">
         <DialogHeader>
-          <DialogTitle>{editBucket ? "Edit bucket" : "New bucket"}</DialogTitle>
-          <DialogDescription>
-            Describe it the way you&apos;d tell an assistant what belongs here —
-            the description is the sorting criteria.
+          <DialogTitle className="text-xl">
+            {editBucket ? "Edit bucket" : "Create a bucket"}
+          </DialogTitle>
+          <DialogDescription className="text-sm">
+            {editBucket
+              ? "Update the name or criteria. Threads already filed stay put; the new criteria applies the next time you sort."
+              : "Describe it in plain language. The concierge scans your inbox once and moves in only the threads that match — nothing else is touched."}
           </DialogDescription>
         </DialogHeader>
-        {result ? (
-          <div className="space-y-2 text-sm">
-            <p className="font-medium">
-              Scanned {result.scanned} threads · evaluated {result.evaluated}{" "}
-              candidates · moved {result.moved.length}
-            </p>
-            {result.usedFallback && (
-              <p className="text-muted-foreground">
-                The description was too broad for similarity retrieval, so every
-                thread was evaluated.
-              </p>
-            )}
-            <DialogFooter>
-              <Button onClick={() => handleOpenChange(false)}>Done</Button>
-            </DialogFooter>
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit(name, description);
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="bucket-name" className="text-xs text-muted-foreground">
+              Bucket name
+            </Label>
+            <Input
+              id="bucket-name"
+              className="rounded-[2px] bg-background"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Receipts"
+              disabled={!!editBucket?.isDefault}
+              autoFocus={!editBucket?.isDefault}
+            />
           </div>
-        ) : (
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit();
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="bucket-name">Name</Label>
-              <Input
-                id="bucket-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Job Applications"
-                disabled={!!editBucket?.isDefault}
-                autoFocus={!editBucket?.isDefault}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bucket-description">Description (optional)</Label>
-              <Textarea
-                id="bucket-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Recruiter outreach, interview scheduling, application confirmations"
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button type="submit" disabled={pending || !name.trim()}>
-                {pending
-                  ? editBucket
-                    ? "Saving…"
-                    : "Scanning inbox…"
-                  : editBucket
-                    ? "Save"
-                    : "Create & sort"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+          <div className="space-y-1.5">
+            <Label htmlFor="bucket-description" className="text-xs text-muted-foreground">
+              Criteria
+            </Label>
+            <Textarea
+              id="bucket-description"
+              className="min-h-[90px] rounded-[2px] bg-background"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Order confirmations, invoices, and payment receipts from any merchant."
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-[2px]"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="rounded-[2px]" disabled={!name.trim()}>
+              {editBucket ? "Save changes" : "Create & scan"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

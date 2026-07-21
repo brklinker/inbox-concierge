@@ -1,17 +1,13 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sourceSerif = Source_Serif_4({
+  variable: "--font-serif",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -26,13 +22,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${sourceSerif.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-        <Toaster />
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              background: "var(--ink)",
+              color: "var(--paper)",
+              border: "none",
+              borderRadius: "3px",
+              boxShadow: "var(--shadow-lg)",
+              fontFamily: "var(--font-serif), Georgia, serif",
+              fontSize: "14px",
+            },
+          }}
+        />
       </body>
     </html>
   );

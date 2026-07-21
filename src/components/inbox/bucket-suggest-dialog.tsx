@@ -68,7 +68,7 @@ function Suggestions({
       {suggestions.map((s) => (
         <button
           key={s.name}
-          className="w-full rounded-md border p-3 text-left hover:bg-muted/50"
+          className="w-full rounded-[2px] border bg-background p-3 text-left hover:bg-accent"
           onClick={() => onPick(s)}
         >
           <span className="text-sm font-medium">
@@ -102,9 +102,9 @@ export function BucketSuggestDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="bg-surface sm:rounded-lg">
         <DialogHeader>
-          <DialogTitle>Suggested buckets</DialogTitle>
+          <DialogTitle className="text-xl">Suggested buckets</DialogTitle>
           <DialogDescription>
             Themes found by clustering your threads&apos; embeddings. Pick one
             to prefill it — you can edit before creating.

@@ -5,101 +5,55 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import type { ApiBucket } from "@/lib/types";
 import { signOut } from "next-auth/react";
 
 export function SettingsDialog({
   open,
   onOpenChange,
   userEmail,
-  buckets,
-  counts,
   mailActionsDisabled,
   onCheckNewMail,
   onResort,
-  onEditBucket,
-  onDeleteBucket,
   onDeleteData,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   userEmail: string;
-  buckets: ApiBucket[];
-  counts: Map<string, number>;
   mailActionsDisabled: boolean;
   onCheckNewMail: () => void;
   onResort: () => void;
-  onEditBucket: (bucket: ApiBucket) => void;
-  onDeleteBucket: (bucket: ApiBucket) => void;
   onDeleteData: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="bg-surface sm:max-w-[520px] sm:rounded-lg">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Buckets, mail actions, and your account.
+          <DialogTitle className="text-xl">Settings</DialogTitle>
+          <DialogDescription className="sr-only">
+            Mail actions and your account.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[70vh] space-y-5 overflow-y-auto">
-          <section className="space-y-2">
-            <h3 className="text-sm font-medium">Buckets</h3>
-            <ul className="space-y-1">
-              {buckets.map((b) => (
-                <li
-                  key={b.id}
-                  className="flex items-center gap-2 rounded-md border px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">
-                      {b.name}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        · {counts.get(b.id) ?? 0} threads
-                        {b.isDefault ? " · default" : ""}
-                      </span>
-                    </p>
-                    {b.description && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {b.description}
-                      </p>
-                    )}
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => onEditBucket(b)}>
-                    {b.isDefault ? "Edit criteria" : "Edit"}
-                  </Button>
-                  {!b.isDefault && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => onDeleteBucket(b)}
-                    >
-                      Delete
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-muted-foreground">
-              Descriptions are the sorting criteria — edit them to teach the
-              classifier what belongs where.
+        <div className="space-y-5">
+          <section>
+            <div className="kicker text-press">Buckets</div>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Manage individual buckets from the section index — hover a bucket
+              and open its ⋯ menu to edit its criteria or delete it.
             </p>
           </section>
 
-          <Separator />
-
           <section className="space-y-2">
-            <h3 className="text-sm font-medium">Mail</h3>
+            <div className="kicker text-press">Mail</div>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-[2px]"
                 disabled={mailActionsDisabled}
                 onClick={onCheckNewMail}
               >
@@ -108,6 +62,7 @@ export function SettingsDialog({
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-[2px]"
                 disabled={mailActionsDisabled}
                 onClick={onResort}
               >
@@ -120,26 +75,35 @@ export function SettingsDialog({
             </p>
           </section>
 
-          <Separator />
-
           <section className="space-y-2">
-            <h3 className="text-sm font-medium">Account</h3>
+            <div className="kicker text-press">Account</div>
             <p className="text-xs text-muted-foreground">Signed in as {userEmail}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => signOut()}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-[2px]"
+                onClick={() => signOut()}
+              >
                 Sign out
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
-                className="text-destructive"
+                variant="outline"
+                className="ml-auto rounded-[2px] border-press2-300 text-press2-700"
                 onClick={onDeleteData}
               >
-                Delete my data
+                Delete all data
               </Button>
             </div>
           </section>
         </div>
+
+        <DialogFooter>
+          <Button className="rounded-[2px]" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
