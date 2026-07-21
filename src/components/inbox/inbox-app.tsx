@@ -283,9 +283,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       setBucketList((prev) => prev.filter((b) => b.id !== bucket.id));
       if (active === bucket.id) setActive(ALL_TAB);
       applyResults(data.reassigned ?? []);
-      toast.success(
-        `Deleted "${bucket.name}" — ${data.reassigned.length} threads re-sorted.`,
-      );
+      toast.success(`Deleted "${bucket.name}" — ${data.reassigned.length} threads re-sorted.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
@@ -301,9 +299,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Move failed (${res.status})`);
       applyResults([data]);
-      toast.success(
-        `Moved to ${data.bucket} — future sorting will learn from this correction.`,
-      );
+      toast.success(`Moved to ${data.bucket} — the concierge will learn from this.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     }
@@ -514,7 +510,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
                 ? "No threads in your inbox."
                 : isClassifying
                   ? "Still sorting — threads land here as they're filed."
-                  : "No threads matched this bucket in the last run."
+                  : "Nothing matched this bucket in the last run."
             }
           />
         </main>
@@ -576,8 +572,8 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             </DialogTitle>
             <DialogDescription>
               Its {confirmDeleteBucket ? (counts.get(confirmDeleteBucket.id) ?? 0) : 0}{" "}
-              threads will be re-sorted into your remaining buckets. This can&apos;t
-              be undone.
+              threads re-sort into your remaining buckets. This can&apos;t be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -606,9 +602,8 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
               Delete everything stored for this account?
             </DialogTitle>
             <DialogDescription>
-              Removes all cached thread metadata, buckets, gold labels, and
-              corrections from the database, then signs you out. Signing in
-              again starts fresh. This can&apos;t be undone.
+              Removes everything stored for this account and signs you out.
+              Signing in again starts fresh. This can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -643,9 +638,8 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
           <DialogHeader>
             <DialogTitle className="text-xl">Re-sort everything?</DialogTitle>
             <DialogDescription>
-              This refetches your inbox and reclassifies all {allThreads.length}{" "}
-              threads from scratch. Takes about half a minute and costs real LLM
-              calls. Threads you&apos;ve re-filed yourself stay put.
+              Reclassifies all {allThreads.length} threads from scratch (~30
+              seconds). Your own re-files stay put.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

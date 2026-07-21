@@ -80,8 +80,8 @@ export function BucketScanRibbon({
       </div>
       <p className="mb-0 mt-3 max-w-[54ch] text-[15px]">
         {scan.usedFallback
-          ? "The description was broad, so every thread was evaluated — still, only the matches moved."
-          : `Only the ${scan.moved} matching thread${scan.moved === 1 ? "" : "s"} moved. The other ${untouched} stayed exactly where they were — a new bucket re-files, it never re-sorts your inbox.`}
+          ? "Broad description, so every thread was evaluated — still, only the matches moved."
+          : `${scan.moved} match${scan.moved === 1 ? "" : "es"} moved; the other ${untouched} stayed put. New buckets re-file — they never re-sort.`}
       </p>
     </div>
   );

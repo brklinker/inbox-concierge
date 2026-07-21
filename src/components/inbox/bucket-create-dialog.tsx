@@ -55,8 +55,8 @@ export function BucketCreateDialog({
           </DialogTitle>
           <DialogDescription className="text-sm">
             {editBucket
-              ? "Update the name or criteria. Threads already filed stay put; the new criteria applies the next time you sort."
-              : "Describe it in plain language. The concierge scans your inbox once and moves in only the threads that match — nothing else is touched."}
+              ? "Filed threads stay put; new criteria apply the next time you sort."
+              : "Describe it in plain language. One scan moves in the matches — nothing else is touched."}
           </DialogDescription>
         </DialogHeader>
         <form

@@ -67,9 +67,9 @@ export function ConsistencyIndicator({
       {corrections.length > 0 ? (
         <>
           <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
-            These sat oddly against similar threads and were quietly re-filed.
-            Click one to see it in its new bucket — its badge moves it back if
-            the concierge got it wrong, and it learns from that too.
+            These sat oddly next to similar threads and were re-filed. Click to
+            view — a thread&apos;s badge moves it back, and the concierge learns
+            from that.
           </p>
           <ul className="mt-3 border-t border-ink/10">
             {corrections.map((c) => (
@@ -98,8 +98,7 @@ export function ConsistencyIndicator({
         </>
       ) : (
         <p className="mb-0 mt-2.5 max-w-[54ch] text-[15px]">
-          The concierge cross-checked its own work against similar threads and
-          confirmed every placement.
+          Cross-checked against similar threads — every placement confirmed.
         </p>
       )}
     </div>

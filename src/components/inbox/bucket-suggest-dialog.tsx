@@ -46,9 +46,7 @@ function Suggestions({
   if (suggestions === null) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Clustering your threads and looking for themes…
-        </p>
+        <p className="text-sm text-muted-foreground">Looking for themes…</p>
         {Array.from({ length: 3 }, (_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
@@ -58,8 +56,7 @@ function Suggestions({
   if (suggestions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No new buckets to suggest — your current set already covers the themes
-        in this inbox.
+        Nothing to suggest — your buckets already cover this inbox.
       </p>
     );
   }
@@ -106,8 +103,8 @@ export function BucketSuggestDialog({
         <DialogHeader>
           <DialogTitle className="text-xl">Suggested buckets</DialogTitle>
           <DialogDescription>
-            Themes found by clustering your threads&apos; embeddings. Pick one
-            to prefill it — you can edit before creating.
+            Themes found in your threads. Pick one to prefill — edit before
+            creating.
           </DialogDescription>
         </DialogHeader>
         {open && <Suggestions onPick={onPick} />}

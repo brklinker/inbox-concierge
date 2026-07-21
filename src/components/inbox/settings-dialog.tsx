@@ -42,8 +42,8 @@ export function SettingsDialog({
           <section>
             <div className="kicker text-press">Buckets</div>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Manage individual buckets from the section index — hover a bucket
-              and open its ⋯ menu to edit its criteria or delete it.
+              Hover a bucket in the section index and open its ⋯ menu to edit
+              or delete.
             </p>
           </section>
 
@@ -70,8 +70,8 @@ export function SettingsDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Re-sorting refetches and reclassifies every thread. Threads
-              you&apos;ve re-filed yourself are never overwritten.
+              Re-sorting reclassifies every thread. Your own re-files are never
+              overwritten.
             </p>
           </section>
 
