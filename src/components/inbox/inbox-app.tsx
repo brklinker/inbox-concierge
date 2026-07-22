@@ -276,15 +276,41 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
 
   const deleteBucket = async (bucket: ApiBucket) => {
     setConfirmDeleteBucket(null);
+    // The delete endpoint re-sorts the bucket's threads with an LLM pass
+    // before responding, so remove the bucket optimistically and show its
+    // threads as sorting; roll both back if the request fails.
+    const prevBuckets = bucketList;
+    const orphanIds = threads
+      ? [...threads.values()].filter((t) => t.bucketId === bucket.id).map((t) => t.id)
+      : [];
+    setBucketList((prev) => prev.filter((b) => b.id !== bucket.id));
+    setActive((cur) => (cur === bucket.id ? ALL_TAB : cur));
+    setThreads((prev) => {
+      if (!prev) return prev;
+      const next = new Map(prev);
+      for (const id of orphanIds) {
+        const t = next.get(id);
+        if (t) next.set(id, { ...t, bucketId: null });
+      }
+      return next;
+    });
     try {
       const res = await fetch(`/api/buckets/${bucket.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Delete failed (${res.status})`);
-      setBucketList((prev) => prev.filter((b) => b.id !== bucket.id));
-      if (active === bucket.id) setActive(ALL_TAB);
       applyResults(data.reassigned ?? []);
       toast.success(`Deleted "${bucket.name}" — ${data.reassigned.length} threads re-sorted.`);
     } catch (e) {
+      setBucketList(prevBuckets);
+      setThreads((prev) => {
+        if (!prev) return prev;
+        const next = new Map(prev);
+        for (const id of orphanIds) {
+          const t = next.get(id);
+          if (t) next.set(id, { ...t, bucketId: bucket.id });
+        }
+        return next;
+      });
       toast.error(e instanceof Error ? e.message : String(e));
     }
   };
