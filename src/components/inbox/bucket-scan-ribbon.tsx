@@ -4,6 +4,7 @@ export type ScanState =
   | { phase: "scanning"; name: string }
   | {
       phase: "done";
+      kind: "created" | "edited";
       name: string;
       scanned: number;
       evaluated: number;
@@ -59,13 +60,16 @@ export function BucketScanRibbon({
   }
 
   const untouched = scan.scanned - scan.moved;
+  const edited = scan.kind === "edited";
   return (
     <div
       className="ribbon anim-arrive mb-5"
       style={{ borderTopColor: "var(--press)" }}
     >
       <div className="flex items-start">
-        <div className="kicker text-press-700">New bucket · {scan.name}</div>
+        <div className="kicker text-press-700">
+          {edited ? "Criteria updated" : "New bucket"} · {scan.name}
+        </div>
         <button
           className="ml-auto text-xs text-press-700 underline-offset-2 hover:underline"
           onClick={onDismiss}
@@ -76,12 +80,14 @@ export function BucketScanRibbon({
       <div className="mt-2.5 flex flex-wrap items-baseline gap-x-8 gap-y-1">
         <Stat value={scan.scanned} label="scanned" />
         <Stat value={scan.evaluated} label="evaluated" delay="0.1s" />
-        <Stat value={scan.moved} label="moved in" accent delay="0.2s" />
+        <Stat value={scan.moved} label={edited ? "re-filed" : "moved in"} accent delay="0.2s" />
       </div>
       <p className="mb-0 mt-3 max-w-[54ch] text-[15px]">
         {scan.usedFallback
           ? "Broad description, so every thread was evaluated — still, only the matches moved."
-          : `${scan.moved} match${scan.moved === 1 ? "" : "es"} moved; the other ${untouched} stayed put. New buckets re-file — they never re-sort.`}
+          : edited
+            ? `${scan.moved} re-filed under the new criteria; the other ${untouched} stayed put. Hand-placed threads never move.`
+            : `${scan.moved} match${scan.moved === 1 ? "" : "es"} moved; the other ${untouched} stayed put. New buckets re-file — they never re-sort.`}
       </p>
     </div>
   );

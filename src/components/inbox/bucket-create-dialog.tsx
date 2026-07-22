@@ -55,7 +55,7 @@ export function BucketCreateDialog({
           </DialogTitle>
           <DialogDescription className="text-sm">
             {editBucket
-              ? "Filed threads stay put; new criteria apply the next time you sort."
+              ? "Saving re-sorts against the new criteria — matches move in, misfits move out. Hand-placed threads stay put."
               : "Describe it in plain language. One scan moves in the matches — nothing else is touched."}
           </DialogDescription>
         </DialogHeader>

@@ -1,11 +1,13 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { buckets, threads } from "@/db/schema";
+import { selectCandidates } from "@/lib/candidates";
 import {
   CLASSIFY_BATCH_SIZE,
   CLASSIFY_CONCURRENCY,
   chunk,
   classifyBatch,
+  evaluateBucketFit,
 } from "@/lib/classify";
 import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts } from "@/lib/openai";
@@ -34,8 +36,11 @@ export async function PATCH(
   if (!session?.user?.email || session.error) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userEmail = session.user.email;
+  const rl = rateLimit(`buckets:${userEmail}`, 20, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSeconds);
   const { id } = await params;
-  const bucket = await ownedBucket(id, session.user.email);
+  const bucket = await ownedBucket(id, userEmail);
   if (!bucket) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const body = (await req.json().catch(() => ({}))) as {
     name?: string;
@@ -46,13 +51,121 @@ export async function PATCH(
   // fixed — the eval gold labels and seeded semantics hang off them.
   const name = bucket.isDefault ? bucket.name : (body.name?.trim() || bucket.name);
   const description = body.description?.trim() ?? bucket.description;
+  const criteriaChanged =
+    name !== bucket.name || (description ?? "") !== (bucket.description ?? "");
   const [embedding] = await embedTexts([`${name}. ${description ?? ""}`.trim()]);
   const [updated] = await db
     .update(buckets)
     .set({ name, description, embedding })
     .where(eq(buckets.id, id))
     .returning();
-  return NextResponse.json({ bucket: toApiBucket(updated) });
+  if (!criteriaChanged) {
+    return NextResponse.json({ bucket: toApiBucket(updated) });
+  }
+
+  // Edited criteria re-sort in both directions: candidates near the new
+  // meaning are judged for membership, and current members that the new
+  // description no longer claims are reclassified out. Hand-placed threads
+  // (corrected_at set) are excluded from both.
+  const all = await db
+    .select()
+    .from(buckets)
+    .where(eq(buckets.userEmail, userEmail))
+    .orderBy(asc(buckets.position));
+  const pool = await db
+    .select()
+    .from(threads)
+    .where(eq(threads.userEmail, userEmail));
+  const members = pool.filter((t) => t.bucketId === id && !t.correctedAt);
+  const outsiders = pool.filter((t) => t.bucketId !== id && t.embedding);
+  const { ids: candidateIds, usedFallback } = selectCandidates(
+    outsiders.map((t) => ({
+      id: t.id,
+      embedding: t.embedding!,
+      confidence: t.confidence,
+      corrected: !!t.correctedAt,
+    })),
+    embedding,
+  );
+  const candidates = outsiders.filter((t) => candidateIds.has(t.id));
+
+  const allCriteria = all.map((b) => ({ name: b.name, description: b.description }));
+  const bucketNameById = new Map(all.map((b) => [b.id, b.name]));
+  const byName = new Map(all.map((b) => [b.name.toLowerCase(), b]));
+  const corrections = await fetchCorrections(userEmail);
+  const limit = pLimit(CLASSIFY_CONCURRENCY);
+  const toInput = (t: (typeof pool)[number]) => ({
+    id: t.id,
+    sender: t.sender,
+    subject: t.subject,
+    snippet: t.snippet,
+    date: t.internalDate?.toISOString() ?? null,
+  });
+
+  const [inDecisions, outResults] = await Promise.all([
+    Promise.all(
+      chunk(candidates, CLASSIFY_BATCH_SIZE).map((batch) =>
+        limit(() =>
+          evaluateBucketFit(
+            batch.map((t) => ({
+              ...toInput(t),
+              currentBucket: t.bucketId
+                ? (bucketNameById.get(t.bucketId) ?? "Unsorted")
+                : "Unsorted",
+            })),
+            { name: updated.name, description: updated.description },
+            allCriteria,
+          ),
+        ),
+      ),
+    ).then((r) => r.flat()),
+    Promise.all(
+      chunk(members, CLASSIFY_BATCH_SIZE).map((batch) =>
+        limit(() => classifyBatch(batch.map(toInput), allCriteria, corrections)),
+      ),
+    ).then((r) => r.flat()),
+  ]);
+
+  const now = new Date();
+  const moved: { id: string; bucketId: string; confidence: number; reason: string }[] = [];
+  const writeLimit = pLimit(10);
+  await Promise.all([
+    ...inDecisions
+      .filter((d) => d.move)
+      .map((d) =>
+        writeLimit(async () => {
+          await db
+            .update(threads)
+            .set({ bucketId: id, confidence: d.confidence, reason: d.reason, classifiedAt: now })
+            .where(and(eq(threads.id, d.id), eq(threads.userEmail, userEmail)));
+          moved.push({ id: d.id, bucketId: id, confidence: d.confidence, reason: d.reason });
+        }),
+      ),
+    ...outResults.map((r) =>
+      writeLimit(async () => {
+        const target = byName.get(r.bucket.toLowerCase());
+        if (!target || target.id === id) return;
+        await db
+          .update(threads)
+          .set({
+            bucketId: target.id,
+            confidence: r.confidence,
+            reason: r.reason,
+            classifiedAt: now,
+          })
+          .where(and(eq(threads.id, r.id), eq(threads.userEmail, userEmail)));
+        moved.push({ id: r.id, bucketId: target.id, confidence: r.confidence, reason: r.reason });
+      }),
+    ),
+  ]);
+
+  return NextResponse.json({
+    bucket: toApiBucket(updated),
+    scanned: pool.length,
+    evaluated: candidates.length + members.length,
+    usedFallback,
+    moved,
+  });
 }
 
 export async function DELETE(

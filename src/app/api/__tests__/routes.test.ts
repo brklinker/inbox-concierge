@@ -1,8 +1,16 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authMock, dbMock, updateChain, deleteReturning, selectQueue, acquireLockMock } =
-  vi.hoisted(() => {
+const {
+  authMock,
+  dbMock,
+  updateChain,
+  deleteReturning,
+  selectQueue,
+  acquireLockMock,
+  evaluateFitMock,
+  classifyBatchMock,
+} = vi.hoisted(() => {
     const updateChain = {
       set: vi.fn(),
       where: vi.fn(),
@@ -40,6 +48,8 @@ const { authMock, dbMock, updateChain, deleteReturning, selectQueue, acquireLock
       deleteReturning,
       selectQueue,
       acquireLockMock: vi.fn(),
+      evaluateFitMock: vi.fn(),
+      classifyBatchMock: vi.fn(),
     };
   });
 
@@ -50,6 +60,22 @@ vi.mock("@/lib/classify-lock", () => ({
   releaseClassifyLock: vi.fn(),
 }));
 vi.mock("@/lib/corrections", () => ({ fetchCorrections: vi.fn(async () => []) }));
+vi.mock("@/lib/openai", () => ({
+  embedTexts: vi.fn(async (texts: string[]) => texts.map(() => [0.1, 0.2])),
+  embeddingInput: vi.fn((t: { subject?: string | null }) => t.subject ?? ""),
+}));
+vi.mock("@/lib/classify", () => ({
+  CLASSIFY_BATCH_SIZE: 15,
+  CLASSIFY_CONCURRENCY: 5,
+  chunk: <T,>(items: T[], size: number) => {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
+  },
+  classifyBatch: classifyBatchMock,
+  evaluateBucketFit: evaluateFitMock,
+  suggestBuckets: vi.fn(async () => []),
+}));
 
 import { GET as threadsGet } from "../threads/route";
 import { PATCH as threadPatch } from "../threads/[id]/route";
@@ -67,6 +93,8 @@ const params = { params: Promise.resolve({ id: "t1" }) };
 beforeEach(() => {
   authMock.mockReset();
   acquireLockMock.mockReset();
+  evaluateFitMock.mockReset();
+  classifyBatchMock.mockReset();
   selectQueue.length = 0;
 });
 
@@ -127,6 +155,89 @@ describe("POST /api/classify — cost guards", () => {
     expect(statuses[0]).not.toBe(429);
     expect(statuses[10]).toBe(429);
     expect(Number(last!.headers.get("Retry-After"))).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("PATCH /api/buckets/[id] — edit re-sorts", () => {
+  const bucket = {
+    id: "t1",
+    userEmail: "edit@x.com",
+    name: "Notifications",
+    description: "old criteria",
+    isDefault: true,
+    position: 2,
+  };
+
+  it("skips the re-sort when criteria are unchanged", async () => {
+    authMock.mockResolvedValue({ user: { email: "edit1@x.com" } });
+    selectQueue.push([bucket]);
+    updateChain.returning.mockResolvedValue([bucket]);
+    const res = await bucketPatch(
+      req("/api/buckets/t1", {
+        method: "PATCH",
+        body: JSON.stringify({ name: bucket.name, description: bucket.description }),
+      }),
+      params,
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).scanned).toBeUndefined();
+    expect(evaluateFitMock).not.toHaveBeenCalled();
+    expect(classifyBatchMock).not.toHaveBeenCalled();
+  });
+
+  it("re-files in both directions on a criteria change, skipping corrected threads", async () => {
+    authMock.mockResolvedValue({ user: { email: "edit2@x.com" } });
+    const updated = { ...bucket, description: "new criteria" };
+    const other = { ...bucket, id: "b2", name: "Auto-Archive" };
+    const thread = (over: object) => ({
+      id: "x",
+      userEmail: "edit2@x.com",
+      sender: "s",
+      subject: "subj",
+      snippet: "snip",
+      internalDate: null,
+      embedding: [1, 1],
+      bucketId: null,
+      confidence: 0.9,
+      correctedAt: null,
+      ...over,
+    });
+    selectQueue.push(
+      [bucket], // ownedBucket
+      [updated, other], // all buckets
+      [
+        thread({ id: "m1", bucketId: "t1" }), // member — re-check out
+        thread({ id: "m2", bucketId: "t1", correctedAt: new Date() }), // corrected — untouchable
+        thread({ id: "o1", bucketId: "b2", confidence: 0.4 }), // candidate — check in
+      ],
+    );
+    updateChain.returning.mockResolvedValue([updated]);
+    evaluateFitMock.mockResolvedValue([
+      { id: "o1", move: true, confidence: 0.9, reason: "fits" },
+    ]);
+    classifyBatchMock.mockResolvedValue([
+      { id: "m1", bucket: "Auto-Archive", confidence: 0.8, reason: "noise" },
+    ]);
+
+    const res = await bucketPatch(
+      req("/api/buckets/t1", {
+        method: "PATCH",
+        body: JSON.stringify({ description: "new criteria" }),
+      }),
+      params,
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.scanned).toBe(3);
+    expect(data.evaluated).toBe(2);
+    const movedById = new Map(
+      (data.moved as { id: string; bucketId: string }[]).map((m) => [m.id, m.bucketId]),
+    );
+    expect(movedById.get("o1")).toBe("t1");
+    expect(movedById.get("m1")).toBe("b2");
+    // The corrected member was never sent to the LLM.
+    const memberIds = classifyBatchMock.mock.calls[0][0].map((t: { id: string }) => t.id);
+    expect(memberIds).toEqual(["m1"]);
   });
 });
 

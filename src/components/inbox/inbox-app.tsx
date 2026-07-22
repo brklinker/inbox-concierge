@@ -245,6 +245,7 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       setActive(data.bucket.id);
       setScan({
         phase: "done",
+        kind: "created",
         name: data.bucket.name,
         scanned: data.scanned,
         evaluated: data.evaluated,
@@ -259,6 +260,12 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
 
   const saveBucket = async (bucket: ApiBucket, name: string, description: string) => {
     setBucketDialogOpen(false);
+    // Mirror the server's criteria-changed check so the scanning ribbon only
+    // shows when a re-sort will actually run.
+    const nextName = bucket.isDefault ? bucket.name : (name.trim() || bucket.name);
+    const willRescan =
+      nextName !== bucket.name || description.trim() !== (bucket.description ?? "");
+    if (willRescan) setScan({ phase: "scanning", name: nextName });
     try {
       const res = await fetch(`/api/buckets/${bucket.id}`, {
         method: "PATCH",
@@ -268,8 +275,23 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? `Save failed (${res.status})`);
       setBucketList((prev) => prev.map((b) => (b.id === data.bucket.id ? data.bucket : b)));
-      toast.success(`Updated "${data.bucket.name}".`);
+      if (data.scanned !== undefined) {
+        applyResults(data.moved);
+        setScan({
+          phase: "done",
+          kind: "edited",
+          name: data.bucket.name,
+          scanned: data.scanned,
+          evaluated: data.evaluated,
+          moved: data.moved.length,
+          usedFallback: data.usedFallback,
+        });
+      } else {
+        setScan(null);
+        toast.success(`Updated "${data.bucket.name}".`);
+      }
     } catch (e) {
+      setScan(null);
       toast.error(e instanceof Error ? e.message : String(e));
     }
   };
