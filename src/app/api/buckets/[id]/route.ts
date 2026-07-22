@@ -66,8 +66,17 @@ export async function DELETE(
   const { id } = await params;
   const bucket = await ownedBucket(id, userEmail);
   if (!bucket) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (bucket.isDefault) {
-    return NextResponse.json({ error: "Default buckets can't be deleted" }, { status: 400 });
+
+  const remaining = await db
+    .select()
+    .from(buckets)
+    .where(and(eq(buckets.userEmail, userEmail), ne(buckets.id, id)))
+    .orderBy(asc(buckets.position));
+  // Zero buckets would leave classification with nothing to sort into — and
+  // the seeder would re-create all five defaults on next load, undoing the
+  // delete anyway.
+  if (remaining.length === 0) {
+    return NextResponse.json({ error: "Keep at least one bucket" }, { status: 400 });
   }
 
   // Reassign this bucket's threads over the remaining buckets in one LLM pass,
@@ -77,11 +86,6 @@ export async function DELETE(
     .select()
     .from(threads)
     .where(and(eq(threads.userEmail, userEmail), eq(threads.bucketId, id)));
-  const remaining = await db
-    .select()
-    .from(buckets)
-    .where(and(eq(buckets.userEmail, userEmail), ne(buckets.id, id)))
-    .orderBy(asc(buckets.position));
   const criteria = remaining.map((b) => ({ name: b.name, description: b.description }));
   const byName = new Map(remaining.map((b) => [b.name.toLowerCase(), b]));
 
@@ -92,7 +96,7 @@ export async function DELETE(
     confidence: number;
     reason: string;
   }[] = [];
-  if (orphans.length > 0 && remaining.length > 0) {
+  if (orphans.length > 0) {
     try {
       // Corrections into the deleted bucket no longer point anywhere; the
       // remaining ones still guide the reassignment.

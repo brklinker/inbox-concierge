@@ -127,18 +127,16 @@ export function SectionsNav({
                   >
                     Edit criteria
                   </button>
-                  {!item.bucket.isDefault && (
-                    <button
-                      role="menuitem"
-                      className="rounded-[2px] px-3 py-2 text-left text-sm text-press2-700 hover:bg-accent"
-                      onClick={() => {
-                        setMenuFor(null);
-                        onDelete(item.bucket!);
-                      }}
-                    >
-                      Delete bucket
-                    </button>
-                  )}
+                  <button
+                    role="menuitem"
+                    className="rounded-[2px] px-3 py-2 text-left text-sm text-press2-700 hover:bg-accent"
+                    onClick={() => {
+                      setMenuFor(null);
+                      onDelete(item.bucket!);
+                    }}
+                  >
+                    Delete bucket
+                  </button>
                 </div>
               </>
             )}
