@@ -58,3 +58,34 @@ code: results with duplicated ids are all dropped and those threads resent,
 since a duplicate id is the fingerprint of the swap. Lesson recorded for the
 write-up: batch classification's cheapness comes with id-integrity risk, and
 self-reported confidence says nothing about it.
+
+## 2026-07-22 — v1 re-run, gold set 57→95: 47.4% raw, 1 catastrophic
+
+Prompt unchanged; the gold set grew and the Can Wait bucket was deleted.
+Reading the misses, ~40 of 50 are label/description coherence, not reasoning:
+
+1. **Stale gold labels (5).** Can Wait was deleted but 5 golds still say it —
+   the classifier can never predict a deleted bucket. Relabel at /label.
+2. **Recruiters boundary undefined (12, both directions).** Model draws
+   cold-outreach→Recruiters, active-process→Important. Gold currently draws
+   it the other way twice over: 6 cold-outreach threads still carry
+   vocabulary-gap-era Important labels, while newly labeled interview
+   logistics went to Recruiters. Decide the line, write it into the
+   Recruiters description, make the golds match.
+3. **Notifications description contradicts the labels both ways (~22).**
+   Golds put receipts/sign-ins/CI in Auto-Archive but the default
+   description explicitly claims receipts and security alerts (11 misses);
+   golds put human calendar invites, travel bookings, and account-security
+   changes in Important but the description claims invites too (6); building
+   notices gold-Notifications got scattered (5). Description surgery, not
+   prompt surgery.
+4. **Newsletter over-applied: 14% precision.** Model stretches "subscribed
+   periodic content" to cover marketing blasts and event promos. Tighten the
+   description to deliberately-subscribed editorial only.
+
+First catastrophic miss: LinkedIn "your data archive is ready" (gold
+Important — a requested export; model saw automated bulk mail). Borderline
+single case: correction-loop material, not worth a description clause.
+
+Next: fix 1–4 (labels + descriptions, prompt stays v1), re-run for the
+honest baseline before any v2 prompt work.
