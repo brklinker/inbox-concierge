@@ -1,78 +1,44 @@
-Eval — prompt v1 — 2026-07-22T20:05:21.719Z
+Eval — prompt v1 — 2026-07-22T20:55:46.190Z
 Gold set: 95 threads across 1 user(s)
-(Published copy: personal names, addresses, account identifiers, and
-employer-internal strings in the misses list are redacted; all metrics are
-the untouched raw output.)
+(Published copy: personal names, addresses, and employer-internal strings in
+the misses list are redacted; all metrics are the untouched raw output.)
 
-Overall accuracy: 45/95 (47.4%)
+Overall accuracy: 76/95 (80.0%)
 Catastrophic misses (gold Important → Auto-Archive): 1
 
 Per-bucket precision/recall:
        bucket  precision  recall  gold n
- Auto-Archive      60.0%   42.9%      28
-     Can Wait          —    0.0%       5
-    Important      50.0%   40.9%      22
-   Newsletter      14.3%  100.0%       1
-Notifications      45.7%   64.0%      25
-   Recruiters      46.7%   50.0%      14
+ Auto-Archive      75.0%   77.4%      31
+    Important      84.0%   95.5%      22
+   Newsletter      33.3%  100.0%       2
+Notifications      88.9%   61.5%      26
+   Recruiters      92.9%   92.9%      14
 
 Confusion matrix (rows = gold, cols = predicted):
-               Auto-Archive  Can Wait  Important  Newsletter  Notifications  Recruiters
- Auto-Archive            12         0          0           3             11           2
-     Can Wait             2         0          0           2              1           0
-    Important             1         0          9           0              6           6
-   Newsletter             0         0          0           1              0           0
-Notifications             5         0          3           1             16           0
-   Recruiters             0         0          6           0              1           7
+               Auto-Archive  Important  Newsletter  Notifications  Recruiters
+ Auto-Archive            24          1           3              2           1
+    Important             1         21           0              0           0
+   Newsletter             0          0           2              0           0
+Notifications             7          2           1             16           0
+   Recruiters             0          1           0              0          13
 
 Misses:
-- [Recruiters → Important] Interview contact <redacted@deeptune.com> | Intro call with [name] / Deeptune | Hey [name], No problem at all. I just rescheduled! Best, Bryce On Wed, Jul 22, 20
 - [Auto-Archive → Notifications] Venmo <venmo@venmo.com> | Your Venmo Standard transfer has been initiated | We successfully issued your transfer Standard transfer initiated Initiated on Tu
-- [Can Wait → Auto-Archive] Neon <product@email.neon.tech> | You're in. Here's a quick guide to help you get started with Neon | Neon Logo Welcome to Neon You're in. Neon is a serverless Postgres database that
-- [Important → Recruiters] LinkedIn InMail <inmail-hit-reply@linkedin.com> | founding engineer - full ownership - NYC, Bryce you in? | Hey Bryce,I'm working closely with the founders at...
 - [Important → Auto-Archive] LinkedIn <messages-noreply@linkedin.com> | The first installment of your LinkedIn data archive is ready! | Your LinkedIn data archive fast file is ready for download.
-- [Recruiters → Important] Interview coordinator <redacted@tenex.co> | Invitation from an unknown sender: Interview with Tenex | Forward Deployed Engineer @ Mon Jul 20, 2026 9am - 9:30am (EDT) (redacted@gmail.com) | Interview with Tenex | Forward Deployed Engineer This event isn't in your calend
-- [Recruiters → Important] Interview coordinator <redacted@withpace.com> | Invitation: Technical Screen with Pace @ Wed Jul 29, 2026 3pm - 3:30pm (EDT) (redacted@gmail.com) | Technical Screen with Pace Join with Google Meet – To cancel or reschedule, use
-- [Can Wait → Auto-Archive] Claude Team <no-reply@email.claude.com> | Fable 5 is now part of your plan | Your Max plan now includes Fable 5.
-- [Important → Notifications] Investor contact <redacted@sequoiacap.com> | Invitation: Bryce <> [name] from Sequoia @ Wed Jul 29, 2026 1:30pm - 2pm (EDT) (redacted@gmail.com) | Bryce <> [name] from Sequoia Hi there, [name] is inviting you to a scheduled Zoom
-- [Auto-Archive → Notifications] Your Benefits Center <Fidelity.Investments@mail.fidelity.com> | Disclosure About Your SERVICENOW, INC. Retirement Plan - Quarterly statement available | BRYCE KLINKER SERVICENOW, INC. Login Review your Quarterly Statement Important i
-- [Notifications → Auto-Archive] Organizer <redacted@citylinksnyc.com> | New game at Marine Park on Sun, Jul 26 | [name] just posted a tee time at Marine Park. 3 spot(s) open. New game posted Ma
-- [Recruiters → Notifications] Recruiter <redacted@talent-vine.io> | Invitation from an unknown sender: Bryce Klinker and [name] @ Wed Jul 29, 2026 1pm - 1:25pm (EDT) (redacted@gmail.com) | Bryce Klinker and [name] This event isn't in your calendar yet You haven'
-- [Notifications → Auto-Archive] Property manager <redacted> | [building address] - LAUNDRY FACILITIES  UPDATE | EMAIL SEND TO RESIDENTS VIA BLIND COPY: NOTICE #2 LAUNDRY FACILITY BASEMENT ACCE
-- [Auto-Archive → Notifications] Experian <support@s.usa.experian.com> | Your monthly account statement is here, Bryce | Review your account statement Experian Logo Membership ID# [redacted] Sig
-- [Important → Recruiters] Recruiter <redacted@candidatelabs.com> | market has shifted, start ups you should know about | Hey Bryce I'll keep it short — we work with 140 companies backed by a16z, Sequoi
+- [Notifications → Auto-Archive] Claude Team <no-reply@email.claude.com> | Fable 5 is now part of your plan | Your Max plan now includes Fable 5.
 - [Notifications → Auto-Archive] Banana Republic <bananarepublic@bananarepublic.narvar.com> | Get excited, your order is en route | Good things are coming your way.
 - [Auto-Archive → Recruiters] Recruiter <redacted@subgraph-hiring.tech> | Bryce - rethinking how SaaS vendors deploy into customer clouds at Ryvn ($160k-$250k) | Hey Bryce, Circling back on Ryvn. I'm curious, are you still focused on distribu
-- [Important → Notifications] United Airlines <notifications@united.com> | Your United Airlines booking confirmation – [redacted] | United Airlines Thanks Bryce for choosing United! United confirmation number : [redacted]
-- [Auto-Archive → Newsletter] Atlassian <info@e.atlassian.com> | Upcoming changes to Atlassian's legal terms | Understand what this means for you Hello, We are writing to inform you that we a
-- [Can Wait → Notifications] Enterprise Plus <EnterprisePlus@email.enterprise.com> | Account Update: Bryce, Here's Your Enterprise Plus July eStatement | Your Enterprise Plus points and activity eStatement for July. Enterprise Plus® R
-- [Important → Recruiters] Recruiter <redacted@hcr.digital> | Bryce, on a scale from 1 to 10, how poachable are you right now? | Quick note on how I actually work. I'm not spraying CVs around. I work with a ha
-- [Notifications → Important] Property manager <redacted> | [building address] - LAUNDRY FACILITIES - BASEMENT ACCESS | This email is being sent via blind copy: NOTICE LAUNDRY FACILITY BASEMENT ACCESS
-- [Auto-Archive → Notifications] Apple <no_reply@email.apple.com> | Your receipt from Apple. | Receipt July 19, 2026 Order ID: [redacted] Document: [redacted] Apple Account:
-- [Auto-Archive → Notifications] customerservice@therealreal.com | New Login Detected on The RealReal | The RealReal New Arrivals Designers Women Men Sale Consign Stores AUTHENTICATED
-- [Notifications → Newsletter] Y Combinator <events@ycombinator.com> | Unfortunately we weren't able to find you a spot for the Founders and Builders: NYC | Hi Bryce, Unfortunately, we've run out of room for the YC Founders & Builders: N
-- [Can Wait → Newsletter] The Bowery Presents <info@events.bowerypresents.com> | Thundercat, Hudson Westbrook, The Linda Lindas, Six Sex, Daily Bread, and more shows on sale this week | plus Zeds Dead, Bob Dylan, WILLIS, Finn Wolfhard, Death Cab for Cutie, Japanese
-- [Important → Notifications] GitHub <noreply@github.com> | [GitHub] A third-party OAuth application has been added to your account | Hey brklinker! A third-party OAuth application (PartyKit) with read:user and use
-- [Notifications → Important] Organizer <redacted@citylinksnyc.com> | Want to play this week? | Quick Sunday reminder. Post any rounds you're playing this week. Weekly reminder
-- [Auto-Archive → Notifications] Experian Alerts <support@s.usa.experian.com> | Heads up Bryce! You have new alerts on your Experian credit file | Sign in to see what's changed. Experian header logo Experian header logo Unread
-- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: Unit Tests - (branch and commit redacted) | [work/private-repo] Unit Tests workflow run Unit Tests: Some jobs were not success
-- [Auto-Archive → Newsletter] Con Edison <ConEdison@email.coned.com> | Tools to Understand—and Lower—Your Energy Bill | Get info you can use now.
-- [Important → Recruiters] Recruiter <redacted@nuable.io> | Founding Engineer roles — AI companies, NYC/remote | Hi Bryce, I'll leave you be after this — just didn't want radio silence to mean
-- [Auto-Archive → Notifications] "OpenTable | Obvio Reservations" <no-reply@opentable.com> | Your reservation confirmation for Obvio | [Reservation confirmed] Thanks for using OpenTable!
-- [Auto-Archive → Notifications] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: E2E Tests - main (commit redacted) | [work/private-repo] E2E Tests workflow run E2E Tests: All jobs have failed Vie
-- [Recruiters → Important] Hiring team <no-reply@ashbyhq.com> | Reminder: Your Upcoming Interview with Mercor | Hi Bryce, A quick reminder that your interview with the team is coming up soon.
-- [Important → Notifications] Vercel <notifications@vercel.com> | Two Factor Authentication Successfully Enabled | Hello, brklinker. Two-factor authentication was successfully enabled. If you did
-- [Notifications → Auto-Archive] Property manager <redacted> | [building address] | This Email is being sent via blind copy. NOTICE REFRIGERATOR IN COMMON AREA It h
-- [Auto-Archive → Notifications] Vercel <notifications@vercel.com> | New sign-in detected on your Vercel account | New sign-in detected on your Vercel account Hello, brklinker. Your Vercel accoun
-- [Recruiters → Important] Pluto <pluto@mail.talentpluto.com> | Talentpluto - Bryce <> Tenex | Hi Tenex, Connecting you with Bryce, whom I spoke with earlier. Bryce, please bo
+- [Notifications → Auto-Archive] Banana Republic <bananarepublic@bananarepublic.narvar.com> | Your package has arrived | We hope you love everything.
+- [Notifications → Auto-Archive] Y Combinator <events@ycombinator.com> | Unfortunately we weren't able to find you a spot for the Founders and Builders: NYC | Hi Bryce, Unfortunately, we've run out of room for the YC Founders & Builders: N
+- [Notifications → Auto-Archive] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: Alembic Rebase - (branch and commit redacted) | [work/private-repo] Alembic Rebase workflow run Alembic Rebase: Some jobs were not
+- [Notifications → Newsletter] Organizer <redacted@citylinksnyc.com> | Want to play this week? | Quick Sunday reminder. Post any rounds you're playing this week. Weekly reminder
+- [Auto-Archive → Notifications] Experian Alerts <support@s.usa.experian.com> | Heads up Bryce! You have new alerts on your Experian credit file | Sign in to see what's changed. Experian header logo Experian header logo Unread 
+- [Notifications → Auto-Archive] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: E2E Tests - main (commit redacted) | [work/private-repo] E2E Tests workflow run E2E Tests: All jobs have failed Vie
+- [Auto-Archive → Newsletter] YC Co-Founder Matching <no-reply@ycombinator.com> | Top co-founder profile picks for the week | Hi Bryce, Check out this week's top candidate picks for you, based on your prefe
 - [Auto-Archive → Newsletter] Fubo <stream@newsletters.fubo.tv> | You're missing out 🥲 | But don't worry... we're giving you $90 off to stream all the action live on Fub
-- [Important → Notifications] Vercel <notifications@vercel.com> | Failed production deployment on team 'brklinker's projects' | Hello, brklinker. There was an error deploying slander to the production environ
-- [Auto-Archive → Recruiters] "Talentpluto (YC)" <pluto@mail.talentpluto.com> | Bryce, are you still interested?  | one last step before we make the introduction Hey Bryce, A company reviewed your
+- [Notifications → Important] Google <noreply@google.com> | Google Verification Code | Google Verification Code Hi Bryce, We received a request to access your Google A
+- [Auto-Archive → Important] "Talentpluto (YC)" <pluto@mail.talentpluto.com> | Bryce, are you still interested?  | one last step before we make the introduction Hey Bryce, A company reviewed your
 - [Notifications → Important] Interview coordinator <redacted@mercor.com> | Canceled event: Interview with Mercor @ Wed Jul 22, 2026 3pm - 3:20pm (EDT) (redacted@gmail.com) | Interview with Mercor This event has been canceled and removed from your calenda
-- [Important → Recruiters] Recruiter <redacted@worthsearch.com> | Akita Health: Founding FE/FS Engineer | Hi Bryce, Following up in case this got lost in your inbox.
-- [Important → Notifications] Networking contact <redacted@authenticintelligence.ai> | Invitation: [Coffee] [name] / Bryce @ Wed Jul 22, 2026 11:30am - 12:15pm (EDT) (redacted@gmail.com) | [Coffee] [name] / Bryce Join with Google Meet – You have been invited by [name]
 - [Recruiters → Important] Recruiter <redacted@marblehealth.com> | Solve the youth mental health crisis @ Marble Health (Series A, $20M+ Raised) | Hi Bryce, Just following up on the above, did you get a chance to read the 5-yea
-- [Important → Recruiters] Recruiter <redacted@transformerstalent.com> | Founding Engineer — Pre-seed AI Startup (Founders are ex-Palantir/Databricks technical leaders) | NYC | Hi Bryce, Hope you're well! I came across your profile on LinkedIn and am reachi
-- [Can Wait → Newsletter] Event organizer <redacted@user.luma-mail.com> | You are invited to The Shortlist: July Founder Showcase | You were hand-selected to join The Shortlist and I wanted to reach out personall
-- [Auto-Archive → Notifications] Tompkins Square Bagels - 2nd Avenue <orders-no-reply@chownow.com> | Thanks for your order (#305963397)! | Thanks for ordering with us Order #305963397 pickup Location Tompkins Square Bag
-- [Notifications → Auto-Archive] Empower <info@rideempower.com> | You have $11.00 in ride credit available on Empower! | Hello, You currently have $11.00 in ride credit available on Empower! When you b
+- [Auto-Archive → Newsletter] Event organizer <redacted@user.luma-mail.com> | You are invited to The Shortlist: July Founder Showcase | You were hand-selected to join The Shortlist and I wanted to reach out personall
+- [Notifications → Auto-Archive] Bryce Klinker <notifications@github.com> | [work/private-repo] Run failed: E2E Tests - main (commit redacted) | [work/private-repo] E2E Tests workflow run E2E Tests: All jobs have failed Vie

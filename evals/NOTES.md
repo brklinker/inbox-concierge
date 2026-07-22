@@ -89,3 +89,36 @@ single case: correction-loop material, not worth a description clause.
 
 Next: fix 1–4 (labels + descriptions, prompt stays v1), re-run for the
 honest baseline before any v2 prompt work.
+
+## 2026-07-22 — v1 coherence pass: 47.4% → 80.0%, catastrophic back to 1
+
+Prompt unchanged. Everything below is labels and descriptions — the fix
+categories the previous entry prescribed, executed per explicitly declared
+preference policies (recorded here so the relabels are auditable):
+
+1. **Recruiters line declared**: cold outreach → Recruiters; active
+   process (scheduled screens, take-homes, replied intro calls) →
+   Important. 12 gold flips both directions. Recruiters also got its
+   first description — it had none, which explains most of its old chaos.
+2. **Stale Can Wait golds (5)** relabeled nearest-fit per thread.
+3. **"GitHub Notifications" test bucket deleted**; its 5 threads released.
+4. **Description surgery** on Important/Notifications/Auto-Archive/
+   Newsletter in three passes: 66.3% → 82.1% → 80.0%. Pass 2's receipt
+   fix exposed that a clause meant for Vercel deploy failures was pulling
+   work CI into Important (CI arrives sender-named as the user); pass 3
+   separated them and traded 2 points of accuracy for halving catastrophic
+   misses (2 → 1) — the right trade by this product's own cost model.
+
+Results per bucket: Recruiters 92.9/92.9, Important 84.0/95.5 — the two
+buckets that matter most now behave.
+
+Honest caveats, so the number is read correctly: descriptions were tuned
+against this gold set — the true test is the next 200 fresh threads, and
+further iteration against these 95 is overfitting, so v1 tuning stops
+here. Several residual misses are duplicate-content threads carrying
+opposite gold labels (two "E2E Tests" CI threads, two Amex payment
+receipts) — the metric's ceiling is the labeler's own consistency. The
+one remaining catastrophic (LinkedIn "data archive ready", a requested
+export the model reads as bulk mail) resists an explicit description
+clause: correction-loop material, and a good demo of why corrections
+exist.
