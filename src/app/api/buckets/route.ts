@@ -9,6 +9,7 @@ import {
   evaluateBucketFit,
 } from "@/lib/classify";
 import { embedTexts } from "@/lib/openai";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { toApiBucket } from "@/lib/serialize";
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import pLimit from "p-limit";
@@ -23,6 +24,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userEmail = session.user.email;
+  const rl = rateLimit(`buckets:${userEmail}`, 20, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSeconds);
   const body = (await req.json().catch(() => ({}))) as {
     name?: string;
     description?: string;

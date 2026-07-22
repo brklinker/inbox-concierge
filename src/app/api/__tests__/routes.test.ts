@@ -1,26 +1,55 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authMock, dbMock, updateChain, deleteReturning } = vi.hoisted(() => {
-  const updateChain = {
-    set: vi.fn(),
-    where: vi.fn(),
-    returning: vi.fn(),
-  };
-  updateChain.set.mockReturnValue(updateChain);
-  updateChain.where.mockReturnValue(updateChain);
-  const deleteReturning = vi.fn();
-  const dbMock = {
-    update: vi.fn(() => updateChain),
-    delete: vi.fn(() => ({
-      where: vi.fn(() => ({ returning: deleteReturning })),
-    })),
-  };
-  return { authMock: vi.fn(), dbMock, updateChain, deleteReturning };
-});
+const { authMock, dbMock, updateChain, deleteReturning, selectQueue, acquireLockMock } =
+  vi.hoisted(() => {
+    const updateChain = {
+      set: vi.fn(),
+      where: vi.fn(),
+      returning: vi.fn(),
+    };
+    updateChain.set.mockReturnValue(updateChain);
+    updateChain.where.mockReturnValue(updateChain);
+    const deleteReturning = vi.fn();
+    // Each db.select() resolves to the next queued row set (empty if the
+    // queue runs dry), regardless of chained from/where/orderBy calls.
+    const selectQueue: unknown[] = [];
+    interface SelectChain {
+      from: () => SelectChain;
+      where: () => SelectChain;
+      orderBy: () => SelectChain;
+      then: (resolve: (value: unknown) => void) => void;
+    }
+    const selectChain: SelectChain = {
+      from: () => selectChain,
+      where: () => selectChain,
+      orderBy: () => selectChain,
+      then: (resolve) => resolve(selectQueue.shift() ?? []),
+    };
+    const dbMock = {
+      update: vi.fn(() => updateChain),
+      delete: vi.fn(() => ({
+        where: vi.fn(() => ({ returning: deleteReturning })),
+      })),
+      select: vi.fn(() => selectChain),
+    };
+    return {
+      authMock: vi.fn(),
+      dbMock,
+      updateChain,
+      deleteReturning,
+      selectQueue,
+      acquireLockMock: vi.fn(),
+    };
+  });
 
 vi.mock("@/auth", () => ({ auth: authMock }));
 vi.mock("@/db", () => ({ db: dbMock }));
+vi.mock("@/lib/classify-lock", () => ({
+  acquireClassifyLock: acquireLockMock,
+  releaseClassifyLock: vi.fn(),
+}));
+vi.mock("@/lib/corrections", () => ({ fetchCorrections: vi.fn(async () => []) }));
 
 import { GET as threadsGet } from "../threads/route";
 import { PATCH as threadPatch } from "../threads/[id]/route";
@@ -37,6 +66,8 @@ const params = { params: Promise.resolve({ id: "t1" }) };
 
 beforeEach(() => {
   authMock.mockReset();
+  acquireLockMock.mockReset();
+  selectQueue.length = 0;
 });
 
 describe("every route rejects unauthenticated requests", () => {
@@ -65,6 +96,37 @@ describe("every route rejects unauthenticated requests", () => {
     });
     const res = await threadsGet(req("/api/threads"));
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/classify — cost guards", () => {
+  it("returns 409 when another run holds the per-user lease", async () => {
+    authMock.mockResolvedValue({ user: { email: "lease@x.com" } });
+    acquireLockMock.mockResolvedValue(false);
+    selectQueue.push(
+      [{ id: "b1", name: "Important", description: null, position: 0 }],
+      [],
+    );
+    const res = await classifyPost(
+      req("/api/classify", { method: "POST", body: "{}" }),
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it("rate limits after 10 runs inside the window", async () => {
+    authMock.mockResolvedValue({ user: { email: "burst@x.com" } });
+    acquireLockMock.mockResolvedValue(false);
+    let last: Response | null = null;
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      last = await classifyPost(
+        req("/api/classify", { method: "POST", body: "{}" }),
+      );
+      statuses.push(last.status);
+    }
+    expect(statuses[0]).not.toBe(429);
+    expect(statuses[10]).toBe(429);
+    expect(Number(last!.headers.get("Retry-After"))).toBeGreaterThanOrEqual(1);
   });
 });
 

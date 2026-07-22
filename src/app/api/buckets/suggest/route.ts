@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { buckets, threads } from "@/db/schema";
 import { suggestBuckets, type ClusterSample } from "@/lib/classify";
 import { kmeans } from "@/lib/cluster";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { topK } from "@/lib/similarity";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -20,6 +21,8 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userEmail = session.user.email;
+  const rl = rateLimit(`suggest:${userEmail}`, 10, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSeconds);
 
   const pool = await db
     .select({

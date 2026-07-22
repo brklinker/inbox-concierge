@@ -9,6 +9,7 @@ import {
 } from "@/lib/classify";
 import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts } from "@/lib/openai";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { toApiBucket } from "@/lib/serialize";
 import { and, asc, eq, ne } from "drizzle-orm";
 import pLimit from "p-limit";
@@ -63,6 +64,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userEmail = session.user.email;
+  const rl = rateLimit(`buckets:${userEmail}`, 20, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSeconds);
   const { id } = await params;
   const bucket = await ownedBucket(id, userEmail);
   if (!bucket) return NextResponse.json({ error: "Not found" }, { status: 404 });

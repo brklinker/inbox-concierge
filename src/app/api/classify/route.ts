@@ -8,9 +8,11 @@ import {
   classifyBatch,
   type ClassifiableThread,
 } from "@/lib/classify";
+import { acquireClassifyLock, releaseClassifyLock } from "@/lib/classify-lock";
 import { findInconsistent } from "@/lib/consistency";
 import { fetchCorrections } from "@/lib/corrections";
 import { embedTexts, embeddingInput } from "@/lib/openai";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import pLimit from "p-limit";
 import { NextRequest } from "next/server";
@@ -32,6 +34,8 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userEmail = session.user.email;
+  const rl = rateLimit(`classify:${userEmail}`, 10, 10 * 60_000);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSeconds);
   const body = (await req.json().catch(() => ({}))) as {
     threadIds?: string[];
     force?: boolean;
@@ -64,6 +68,15 @@ export async function POST(req: NextRequest) {
       );
   const targets = await db.select().from(threads).where(targetFilter);
   const corrections = await fetchCorrections(userEmail);
+
+  // The client-side classifyRunning guard is advisory; this is the real
+  // one run per user, enforced across serverless instances.
+  if (!(await acquireClassifyLock(userEmail))) {
+    return Response.json(
+      { error: "A classification run is already in progress." },
+      { status: 409 },
+    );
+  }
 
   const encoder = new TextEncoder();
   // If the client disconnects mid-run, enqueue() starts throwing. The work
@@ -256,6 +269,7 @@ export async function POST(req: NextRequest) {
           message: e instanceof Error ? e.message : String(e),
         });
       } finally {
+        await releaseClassifyLock(userEmail);
         if (!clientGone) {
           try {
             controller.close();

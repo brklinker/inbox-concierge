@@ -56,5 +56,13 @@ export const threads = pgTable(
   (table) => [index("threads_user_email_idx").on(table.userEmail)],
 );
 
+// Lease serializing classification per user across serverless instances:
+// one row per user while a run is in flight. Stale rows (crashed runs)
+// are reclaimed by TTL on acquire — see src/lib/classify-lock.ts.
+export const classifyLocks = pgTable("classify_locks", {
+  userEmail: text("user_email").primaryKey(),
+  lockedAt: timestamp("locked_at", { withTimezone: true }).notNull(),
+});
+
 export type Bucket = typeof buckets.$inferSelect;
 export type Thread = typeof threads.$inferSelect;

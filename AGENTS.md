@@ -36,6 +36,8 @@ CI (.github/workflows/ci.yml) runs lint → typecheck → test → build on push
   pure embedding-side logic (unit-tested)
 - `src/lib/gmail.ts` — REST client; `html-entities.ts` — RFC 2047 / entity
   decoding; `corrections.ts` — few-shot correction fetch
+- `src/lib/rate-limit.ts` — per-user sliding window on LLM routes;
+  `classify-lock.ts` — DB lease, one classify run per user
 - `src/app/api/*` — thin route handlers; classify streams SSE
 - `src/components/inbox/*` — UI; design tokens in `src/app/globals.css`
   ("Broadsheet" system — paper/ink/press-cyan/magenta, Source Serif 4)
