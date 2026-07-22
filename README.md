@@ -110,11 +110,16 @@ in. Send me any email address and I'll add it as a test user within the hour.
 
 ## Privacy
 
-What gets stored: subjects, senders, and Gmail's ~100-character preview
-snippets — never full message bodies, which are never even fetched (threads
-come down with `format=metadata`; nothing in this codebase requests a body).
-Where: a Neon Postgres instance. Gmail access is read-only, and "Delete my
-data" in the app removes everything on demand.
+What gets fetched and stored: subjects, senders, dates, and Gmail's short
+preview snippets — never full message bodies, which are never even fetched
+(threads come down with `format=metadata`; nothing in this codebase requests
+a body, and a unit test pins that). Gmail access is read-only.
+
+Where it goes: a Neon Postgres instance, and the same metadata is sent to
+the OpenAI API for classification and embeddings (OpenAI's API terms exclude
+training on it). "Delete all data" in the app removes every stored row
+immediately and signs you out; Neon's point-in-time restore history ages the
+deleted rows out within about a day.
 
 ## Eval
 

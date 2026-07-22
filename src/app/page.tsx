@@ -39,8 +39,8 @@ export default async function Home() {
           </Button>
         </form>
         <p className="mt-6 max-w-[54ch] text-[13px] text-muted-foreground">
-          Read-only. Only subjects, senders, and snippets — never message
-          bodies. Delete everything any time.
+          Read-only. Only subjects, senders, snippets, and dates — never
+          message bodies. Delete everything any time.
         </p>
       </main>
     );

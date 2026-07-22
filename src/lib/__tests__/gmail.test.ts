@@ -55,6 +55,20 @@ describe("listThreadIds", () => {
 });
 
 describe("getThreadMetadata", () => {
+  it("requests metadata format only — the privacy claim depends on it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: "t1", messages: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await getThreadMetadata("token", "t1");
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("format=metadata");
+    expect(url).not.toContain("format=full");
+    // Exactly the three headers the app claims to read.
+    expect(url.match(/metadataHeaders=/g)).toHaveLength(3);
+    for (const h of ["Subject", "From", "Date"]) {
+      expect(url).toContain(`metadataHeaders=${h}`);
+    }
+  });
+
   it("takes subject/sender from the first message, snippet/date from the last, decoded", async () => {
     vi.stubGlobal(
       "fetch",
