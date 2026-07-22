@@ -128,18 +128,6 @@ npm run eval            # runs the gold set through the live prompt, writes eval
 npm run eval -- --dry   # print only
 ```
 
-## How this was built
-
-With Claude Code, at AI speed — and with the skepticism that requires. The
-verification loop, not the generation, was the human job: a blind gold set
-labeled before any tuning, an eval whose first result got decomposed rather
-than believed (most "misses" turned out to be a labeling-harness gap and
-preference divergence, not model failure), and a test suite where the
-decoding and id-guard cases each correspond to a real bug found during
-development — including a silent id-swap that misfiled a real email at 0.8
-confidence and was caught by a human reading a tooltip. The commit history
-narrates the decisions in order.
-
 ## Tests
 
 ```bash
