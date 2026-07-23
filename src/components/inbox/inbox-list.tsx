@@ -11,6 +11,7 @@ export function InboxList({
   isClassifying,
   emptyMessage,
   onMove,
+  reasonById,
 }: {
   threads: ApiThread[];
   bucketNameById: Map<string, string>;
@@ -19,6 +20,8 @@ export function InboxList({
   isClassifying: boolean;
   emptyMessage: string;
   onMove: (thread: ApiThread, bucketId: string) => void;
+  /** Optional per-thread search-match reasons (search-results mode). */
+  reasonById?: Map<string, string>;
 }) {
   if (threads.length === 0) {
     return (
@@ -39,6 +42,7 @@ export function InboxList({
           isClassifying={isClassifying}
           moveTargets={moveTargets}
           onMove={onMove}
+          matchReason={reasonById?.get(t.id) ?? null}
         />
       ))}
     </div>

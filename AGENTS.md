@@ -31,14 +31,16 @@ CI (.github/workflows/ci.yml) runs lint → typecheck → test → build on push
 ## Map
 
 - `src/lib/classify.ts` — prompt (PROMPT_VERSION), classifyBatch,
-  evaluateBucketFit, suggestBuckets; all LLM entry points live here
-- `src/lib/consistency.ts`, `candidates.ts`, `cluster.ts`, `similarity.ts` —
-  pure embedding-side logic (unit-tested)
+  evaluateBucketFit, suggestBuckets, answerInboxQuery; all LLM entry points
+  live here
+- `src/lib/consistency.ts`, `candidates.ts`, `cluster.ts`, `similarity.ts`,
+  `search.ts` — pure embedding-side logic (unit-tested)
 - `src/lib/gmail.ts` — REST client; `html-entities.ts` — RFC 2047 / entity
   decoding; `corrections.ts` — few-shot correction fetch
 - `src/lib/rate-limit.ts` — per-user sliding window on LLM routes;
   `classify-lock.ts` — DB lease, one classify run per user
-- `src/app/api/*` — thin route handlers; classify streams SSE
+- `src/app/api/*` — thin route handlers; classify streams SSE; search is
+  the ask-your-inbox retrieval→LLM endpoint
 - `src/components/inbox/*` — UI; design tokens in `src/app/globals.css`
   ("Broadsheet" system — paper/ink/press-cyan/magenta, Source Serif 4)
 - `scripts/eval.ts` — same classifyBatch code path as production

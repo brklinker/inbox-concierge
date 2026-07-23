@@ -24,6 +24,7 @@ export function ThreadRow({
   isClassifying,
   moveTargets,
   onMove,
+  matchReason,
 }: {
   thread: ApiThread;
   bucketName: string | null;
@@ -31,6 +32,8 @@ export function ThreadRow({
   isClassifying: boolean;
   moveTargets: MoveTarget[];
   onMove: (thread: ApiThread, bucketId: string) => void;
+  /** When set, the search-match reason shown under the subject. */
+  matchReason?: string | null;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = senderName(thread.sender);
@@ -69,6 +72,23 @@ export function ThreadRow({
         </span>
         {thread.snippet && (
           <span className="text-sm text-muted-foreground"> — {thread.snippet}</span>
+        )}
+        {matchReason && (
+          <div className="mt-0.5 flex items-center gap-1.5 text-[12px] italic text-press-700">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="flex-none"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            {matchReason}
+          </div>
         )}
       </div>
       <div className="relative flex items-center justify-end gap-2">

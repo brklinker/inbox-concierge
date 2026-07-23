@@ -6,6 +6,7 @@ vi.mock("../openai", () => ({
 }));
 
 import {
+  answerInboxQuery,
   classifyBatch,
   evaluateBucketFit,
   suggestBuckets,
@@ -144,6 +145,62 @@ describe("evaluateBucketFit", () => {
       ["a", true],
       ["b", false],
     ]);
+  });
+});
+
+describe("answerInboxQuery", () => {
+  const answerCompletion = (answer: string, results: object[]) => ({
+    choices: [{ message: { parsed: { answer, results } } }],
+  });
+
+  it("returns only relevant matches, in candidate (similarity) order", async () => {
+    // Model answers out of order; matches must follow the input order.
+    parse.mockResolvedValueOnce(
+      answerCompletion("Found 2 recruiter threads.", [
+        { id: "c", relevant: true, reason: "recruiter outreach" },
+        { id: "a", relevant: true, reason: "interview scheduling" },
+        { id: "b", relevant: false, reason: "unrelated newsletter" },
+      ]),
+    );
+    const out = await answerInboxQuery("recruiter threads", [
+      thread("a"),
+      thread("b"),
+      thread("c"),
+    ]);
+    expect(out.answer).toBe("Found 2 recruiter threads.");
+    expect(out.matches).toEqual([
+      { id: "a", reason: "interview scheduling" },
+      { id: "c", reason: "recruiter outreach" },
+    ]);
+  });
+
+  it("poisons a duplicated id even when it is marked relevant", async () => {
+    parse.mockResolvedValueOnce(
+      answerCompletion("One match.", [
+        { id: "a", relevant: true, reason: "real" },
+        { id: "a", relevant: true, reason: "stamped with the wrong id" },
+        { id: "b", relevant: true, reason: "clean match" },
+      ]),
+    );
+    const out = await answerInboxQuery("q", [thread("a"), thread("b")]);
+    expect(out.matches).toEqual([{ id: "b", reason: "clean match" }]);
+  });
+
+  it("ignores hallucinated ids outside the candidate set", async () => {
+    parse.mockResolvedValueOnce(
+      answerCompletion("A match.", [
+        { id: "a", relevant: true, reason: "match" },
+        { id: "ghost", relevant: true, reason: "hallucinated" },
+      ]),
+    );
+    const out = await answerInboxQuery("q", [thread("a")]);
+    expect(out.matches).toEqual([{ id: "a", reason: "match" }]);
+  });
+
+  it("skips the LLM call entirely when there are no candidates", async () => {
+    const out = await answerInboxQuery("q", []);
+    expect(out).toEqual({ answer: "", matches: [] });
+    expect(parse).not.toHaveBeenCalled();
   });
 });
 
