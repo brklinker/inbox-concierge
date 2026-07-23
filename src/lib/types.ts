@@ -23,6 +23,19 @@ export interface ApiBucket {
   position: number;
 }
 
+export interface ApiSearchResponse {
+  /** Plain-language answer to the query. */
+  answer: string;
+  /** Matched threads (relevance-ordered) with a one-phrase reason each. */
+  results: { id: string; reason: string }[];
+  /** Threads in the pool (embedded). */
+  scanned: number;
+  /** Candidates sent to the LLM after retrieval. */
+  evaluated: number;
+  /** Candidates judged relevant. */
+  matched: number;
+}
+
 export interface ClassifyEvent {
   type: "start" | "batch" | "review_start" | "done" | "error";
   total?: number;

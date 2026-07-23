@@ -6,6 +6,7 @@ import { BucketSuggestDialog, type BucketSuggestionItem } from "./bucket-suggest
 import { ClassificationProgress, type ClassifyProgress } from "./classification-progress";
 import { ConsistencyIndicator, type ReviewSummary } from "./consistency-indicator";
 import { InboxList } from "./inbox-list";
+import { InboxSearch, SearchAnswerRibbon } from "./inbox-search";
 import { ALL_TAB, SectionsNav, UNSORTED_TAB } from "./sections-nav";
 import { SettingsDialog } from "./settings-dialog";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { bucketTone } from "@/lib/bucket-tones";
 import { readSSE } from "@/lib/sse-client";
-import type { ApiBucket, ApiThread, ClassifyEvent } from "@/lib/types";
+import type {
+  ApiBucket,
+  ApiSearchResponse,
+  ApiThread,
+  ClassifyEvent,
+} from "@/lib/types";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -101,6 +107,9 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const [confirmDeleteBucket, setConfirmDeleteBucket] = useState<ApiBucket | null>(null);
   const [confirmDeleteData, setConfirmDeleteData] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<ApiSearchResponse | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const classifyRunning = useRef(false);
   const hasLoaded = useRef(false);
 
@@ -353,6 +362,30 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
     }
   };
 
+  const runSearch = async (query: string) => {
+    setSearching(true);
+    try {
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `Search failed (${res.status})`);
+      setSearchQuery(query);
+      setSearchResult(data as ApiSearchResponse);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchResult(null);
+    setSearchQuery("");
+  };
+
   if (loadError) {
     return (
       <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
@@ -467,6 +500,14 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
   const isClassifying =
     progress.phase === "classifying" || progress.phase === "reviewing";
 
+  const searchActive = searchResult !== null;
+  const searchReasonById = new Map(
+    (searchResult?.results ?? []).map((r) => [r.id, r.reason]),
+  );
+  const matchedThreads = (searchResult?.results ?? [])
+    .map((r) => threads.get(r.id))
+    .filter((t): t is ApiThread => !!t);
+
   return (
     <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
       <Masthead userEmail={userEmail} onSettings={() => setSettingsOpen(true)} />
@@ -535,32 +576,57 @@ export function InboxApp({ userEmail }: { userEmail: string }) {
             </div>
           </div>
 
-          <BucketScanRibbon scan={scan} onDismiss={() => setScan(null)} />
-          <ClassificationProgress progress={progress} />
-          {!isClassifying && !scan && !reviewDismissed && (
-            <ConsistencyIndicator
-              summary={review}
-              resolveThread={(id) => threads.get(id)}
-              onJumpToBucket={(bucketId) => setActive(bucketId)}
-              onDismiss={() => setReviewDismissed(true)}
-            />
-          )}
-
-          <InboxList
-            threads={visible}
-            bucketNameById={bucketNameById}
-            badgeClassById={badgeClassById}
-            moveTargets={moveTargets}
-            isClassifying={isClassifying}
-            onMove={moveThread}
-            emptyMessage={
-              effectiveActive === ALL_TAB
-                ? "No threads in your inbox."
-                : isClassifying
-                  ? "Still sorting — threads land here as they're filed."
-                  : "Nothing matched this bucket in the last run."
-            }
+          <InboxSearch
+            onSearch={runSearch}
+            onClear={clearSearch}
+            searching={searching}
+            active={searchActive}
           />
+
+          {searchActive && searchResult ? (
+            <>
+              <SearchAnswerRibbon result={searchResult} query={searchQuery} />
+              <InboxList
+                threads={matchedThreads}
+                bucketNameById={bucketNameById}
+                badgeClassById={badgeClassById}
+                moveTargets={moveTargets}
+                isClassifying={false}
+                onMove={moveThread}
+                reasonById={searchReasonById}
+                emptyMessage="No threads matched your question."
+              />
+            </>
+          ) : (
+            <>
+              <BucketScanRibbon scan={scan} onDismiss={() => setScan(null)} />
+              <ClassificationProgress progress={progress} />
+              {!isClassifying && !scan && !reviewDismissed && (
+                <ConsistencyIndicator
+                  summary={review}
+                  resolveThread={(id) => threads.get(id)}
+                  onJumpToBucket={(bucketId) => setActive(bucketId)}
+                  onDismiss={() => setReviewDismissed(true)}
+                />
+              )}
+
+              <InboxList
+                threads={visible}
+                bucketNameById={bucketNameById}
+                badgeClassById={badgeClassById}
+                moveTargets={moveTargets}
+                isClassifying={isClassifying}
+                onMove={moveThread}
+                emptyMessage={
+                  effectiveActive === ALL_TAB
+                    ? "No threads in your inbox."
+                    : isClassifying
+                      ? "Still sorting — threads land here as they're filed."
+                      : "Nothing matched this bucket in the last run."
+                }
+              />
+            </>
+          )}
         </main>
       </div>
 

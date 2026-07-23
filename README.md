@@ -24,7 +24,7 @@ flowchart LR
     G --> E
 ```
 
-Embeddings do three jobs:
+Embeddings do four jobs:
 
 1. **Consistency checking** — after classification, threads whose 10 nearest
    neighbors mostly disagree with their label (and whose own confidence is low)
@@ -37,7 +37,15 @@ Embeddings do three jobs:
    existing embeddings locally (free), and the LLM names only the clusters
    worth having as buckets — the defaults from the brief stay; discovery is
    an additive layer, and a picked suggestion just prefills normal creation.
-3. **The scaling story** — per-user brute-force cosine works to ~100k threads;
+3. **Ask your inbox** — the search bar takes a plain-English question
+   ("recruiter threads about backend roles", "anything with an unpaid
+   invoice") and answers it with the same two-stage cascade: the query is
+   embedded and cosine-ranked to a handful of candidates (cheap retrieval),
+   then one LLM pass judges which genuinely match and writes a short answer
+   (expensive judgment). It reuses the classifier's id-echo guard, runs
+   read-only and metadata-only like everything else, and skips the LLM
+   entirely when nothing clears the similarity floor.
+4. **The scaling story** — per-user brute-force cosine works to ~100k threads;
    pgvector HNSW after that; a dedicated vector DB probably never, for this
    workload.
 

@@ -10,6 +10,7 @@ const {
   acquireLockMock,
   evaluateFitMock,
   classifyBatchMock,
+  answerQueryMock,
 } = vi.hoisted(() => {
     const updateChain = {
       set: vi.fn(),
@@ -50,6 +51,7 @@ const {
       acquireLockMock: vi.fn(),
       evaluateFitMock: vi.fn(),
       classifyBatchMock: vi.fn(),
+      answerQueryMock: vi.fn(),
     };
   });
 
@@ -75,6 +77,7 @@ vi.mock("@/lib/classify", () => ({
   classifyBatch: classifyBatchMock,
   evaluateBucketFit: evaluateFitMock,
   suggestBuckets: vi.fn(async () => []),
+  answerInboxQuery: answerQueryMock,
 }));
 
 import { GET as threadsGet } from "../threads/route";
@@ -83,6 +86,7 @@ import { POST as classifyPost } from "../classify/route";
 import { GET as bucketsGet, POST as bucketsPost } from "../buckets/route";
 import { DELETE as bucketDelete, PATCH as bucketPatch } from "../buckets/[id]/route";
 import { POST as suggestPost } from "../buckets/suggest/route";
+import { POST as searchPost } from "../search/route";
 import { POST as labelPost } from "../label/route";
 import { DELETE as meDelete } from "../me/route";
 
@@ -95,6 +99,7 @@ beforeEach(() => {
   acquireLockMock.mockReset();
   evaluateFitMock.mockReset();
   classifyBatchMock.mockReset();
+  answerQueryMock.mockReset();
   selectQueue.length = 0;
 });
 
@@ -110,10 +115,11 @@ describe("every route rejects unauthenticated requests", () => {
       bucketPatch(req("/api/buckets/t1", { method: "PATCH" }), params),
       bucketDelete(req("/api/buckets/t1", { method: "DELETE" }), params),
       suggestPost(),
+      searchPost(req("/api/search", { method: "POST" })),
       labelPost(req("/api/label", { method: "POST" })),
       meDelete(),
     ]);
-    expect(responses.map((r) => r.status)).toEqual(Array(10).fill(401));
+    expect(responses.map((r) => r.status)).toEqual(Array(11).fill(401));
   });
 
   it("treats a failed token refresh as unauthenticated", async () => {
@@ -262,6 +268,76 @@ describe("POST /api/label", () => {
       req("/api/label", { method: "POST", body: JSON.stringify({}) }),
     );
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/search — ask your inbox", () => {
+  const searchReq = (query: unknown) =>
+    req("/api/search", { method: "POST", body: JSON.stringify({ query }) });
+
+  it("rejects an empty query before touching the DB or LLM", async () => {
+    authMock.mockResolvedValue({ user: { email: "s1@x.com" } });
+    const res = await searchPost(searchReq("   "));
+    expect(res.status).toBe(400);
+    expect(answerQueryMock).not.toHaveBeenCalled();
+  });
+
+  it("returns relevant matches with retrieval counts", async () => {
+    authMock.mockResolvedValue({ user: { email: "s2@x.com" } });
+    selectQueue.push(
+      // pool: one thread whose embedding clears the similarity floor
+      [
+        {
+          id: "t1",
+          sender: "Recruiter <r@x.com>",
+          subject: "Backend role",
+          snippet: "hi",
+          internalDate: null,
+          bucketId: "b1",
+          embedding: [1, 1],
+        },
+      ],
+      [{ id: "b1", name: "Recruiters" }], // buckets
+    );
+    answerQueryMock.mockResolvedValue({
+      answer: "One recruiter thread about a backend role.",
+      matches: [{ id: "t1", reason: "backend recruiter outreach" }],
+    });
+    const res = await searchPost(searchReq("backend recruiter threads"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toEqual({
+      answer: "One recruiter thread about a backend role.",
+      results: [{ id: "t1", reason: "backend recruiter outreach" }],
+      scanned: 1,
+      evaluated: 1,
+      matched: 1,
+    });
+  });
+
+  it("skips the LLM when nothing clears the similarity floor", async () => {
+    authMock.mockResolvedValue({ user: { email: "s3@x.com" } });
+    selectQueue.push(
+      // embedding barely overlaps the mocked query vector [0.1, 0.2]
+      [{ id: "t1", sender: "s", subject: "x", snippet: null, internalDate: null, bucketId: null, embedding: [0.1, 0.1] }],
+      [],
+    );
+    const res = await searchPost(searchReq("something unrelated"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.matched).toBe(0);
+    expect(data.evaluated).toBe(0);
+    expect(answerQueryMock).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty result when the mailbox has no embedded threads", async () => {
+    authMock.mockResolvedValue({ user: { email: "s4@x.com" } });
+    selectQueue.push([]); // empty pool
+    const res = await searchPost(searchReq("anything"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.scanned).toBe(0);
+    expect(answerQueryMock).not.toHaveBeenCalled();
   });
 });
 

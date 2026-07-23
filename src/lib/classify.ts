@@ -276,6 +276,87 @@ For each cluster, decide whether it deserves a NEW bucket ("propose": true) or i
     }));
 }
 
+/** A thread offered to the search-answer LLM stage. Metadata only. */
+export interface SearchCandidate extends ClassifiableThread {
+  /** Current bucket name, given to the model as context for its answer. */
+  bucket?: string | null;
+}
+
+export interface SearchMatch {
+  id: string;
+  reason: string;
+}
+
+export interface InboxAnswer {
+  /** One or two sentences answering the query in plain language. */
+  answer: string;
+  /** Candidates the model judged genuinely relevant, in similarity order. */
+  matches: SearchMatch[];
+}
+
+/**
+ * Semantic inbox search, stage two (LLM judgment). Given the query and the
+ * similarity-retrieved candidates, decide which genuinely match and write a
+ * short natural-language answer. Retrieval casts a wide net, so the model is
+ * told to be strict — most candidates are near-misses.
+ */
+export async function answerInboxQuery(
+  query: string,
+  candidates: SearchCandidate[],
+): Promise<InboxAnswer> {
+  if (candidates.length === 0) return { answer: "", matches: [] };
+  const schema = z.object({
+    answer: z.string(),
+    results: z.array(
+      z.object({
+        id: z.string(),
+        relevant: z.boolean(),
+        reason: z.string(),
+      }),
+    ),
+  });
+  const system = `You are an email triage assistant helping the user find threads in their inbox by answering a natural-language question.
+
+You are given the user's question and a set of candidate threads already narrowed by similarity search. You see only sender, subject, snippet, date, and current bucket — never the full body.
+
+For each candidate, decide whether it genuinely matches the user's question ("relevant": true or false). Be strict: similarity search casts a wide net, so many candidates are near-misses that do not actually match — exclude those. reason: one short phrase (under 12 words) naming why it matches.
+
+Also write "answer": one or two plain-language sentences addressing the question directly, grounded in what you found (how many, which senders, the most relevant thread). If nothing matches, say so briefly.
+
+Return exactly one result per candidate, echoing its id.`;
+  const completion = await openai.chat.completions.parse({
+    model: CLASSIFY_MODEL,
+    // Temperature 0: repeatable on camera, same as every other LLM call here.
+    temperature: 0,
+    response_format: zodResponseFormat(schema, "inbox_search"),
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: JSON.stringify({ question: query, candidates }) },
+    ],
+  });
+  const parsed = completion.choices[0]?.message.parsed;
+  if (!parsed) throw new Error("Inbox search returned no parsed output");
+  // Same id-echo guard as classifyBatch: ids outside the input set are
+  // hallucinated, and a duplicated id means a verdict was stamped with the
+  // wrong thread's id — drop all its occurrences. Here a dropped id just
+  // fails to surface as a match (a soft miss), never a misfile, so there is
+  // no retry: an unreturned candidate is simply treated as not relevant.
+  const inputIds = new Set(candidates.map((c) => c.id));
+  const idCounts = new Map<string, number>();
+  for (const r of parsed.results) {
+    if (inputIds.has(r.id)) idCounts.set(r.id, (idCounts.get(r.id) ?? 0) + 1);
+  }
+  const reasonById = new Map<string, string>();
+  for (const r of parsed.results) {
+    if (r.relevant && idCounts.get(r.id) === 1) reasonById.set(r.id, r.reason);
+  }
+  // Preserve similarity order by walking the candidates, not the model output.
+  const matches = candidates
+    .filter((c) => reasonById.has(c.id))
+    .map((c) => ({ id: c.id, reason: reasonById.get(c.id)! }));
+  return { answer: parsed.answer, matches };
+}
+
 export function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
